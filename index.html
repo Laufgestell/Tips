@@ -1,0 +1,1713 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Чаевые — расчёт и распределение</title>
+<style>
+:root{
+  --bg:#17140F;
+  --bg-elevated:#211D17;
+  --bg-elevated-2:#2A241C;
+  --border:#382F24;
+  --text:#F1EAE0;
+  --text-dim:#A89A87;
+  --text-faint:#6E6353;
+  --accent:#C17A3F;
+  --accent-strong:#D98F4F;
+  --accent-soft:rgba(193,122,63,.16);
+  --success:#8CA478;
+  --success-soft:rgba(140,164,120,.16);
+  --danger:#C0604D;
+  --danger-soft:rgba(192,96,77,.16);
+  --shadow:0 8px 24px rgba(0,0,0,.35);
+  --radius-s:8px;
+  --radius-m:14px;
+  --radius-l:20px;
+  --font-display:Georgia,'Iowan Old Style','Palatino Linotype',serif;
+  --font-body:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  color-scheme:dark;
+}
+html[data-theme="light"]{
+  --bg:#FAF6EF;
+  --bg-elevated:#FFFFFF;
+  --bg-elevated-2:#F2EBDD;
+  --border:#E4DAC7;
+  --text:#241E15;
+  --text-dim:#79695490;
+  --text-dim:#7A6C56;
+  --text-faint:#A79B87;
+  --accent:#A8622E;
+  --accent-strong:#8F4F22;
+  --accent-soft:rgba(168,98,46,.12);
+  --success:#5C7A4E;
+  --success-soft:rgba(92,122,78,.12);
+  --danger:#AB4636;
+  --danger-soft:rgba(171,70,54,.12);
+  --shadow:0 8px 24px rgba(60,45,20,.12);
+  color-scheme:light;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--font-body);
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+  padding-bottom:78px;
+}
+h1,h2,h3{font-family:var(--font-display);font-weight:600;margin:0;}
+.num{font-variant-numeric:tabular-nums;}
+button{font-family:inherit;}
+input,select{font-family:inherit;}
+
+/* ---------- layout ---------- */
+.app-shell{max-width:1180px;margin:0 auto;display:flex;}
+.sidebar{
+  display:none;
+}
+.main{flex:1;min-width:0;padding:20px 16px 40px;}
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:6px 2px 22px;
+}
+.topbar .brand{display:flex;align-items:center;gap:10px;}
+.topbar .brand-mark{
+  width:34px;height:34px;border-radius:10px;background:var(--accent-soft);
+  display:flex;align-items:center;justify-content:center;color:var(--accent-strong);font-size:18px;
+}
+.topbar h1{font-size:20px;letter-spacing:.2px;}
+.topbar .sub{font-size:12px;color:var(--text-faint);margin-top:1px;}
+
+.screen{display:none;animation:fade .18s ease;}
+.screen.active{display:block;}
+@keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+/* ---------- bottom nav ---------- */
+.bottom-nav{
+  position:fixed;left:0;right:0;bottom:0;z-index:40;
+  background:var(--bg-elevated);border-top:1px solid var(--border);
+  display:flex;padding:6px 4px calc(6px + env(safe-area-inset-bottom));
+}
+.nav-btn{
+  flex:1;background:none;border:none;color:var(--text-faint);
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:8px 2px;border-radius:12px;font-size:11px;cursor:pointer;
+}
+.nav-btn .ic{font-size:20px;line-height:1;}
+.nav-btn.active{color:var(--accent-strong);background:var(--accent-soft);}
+
+@media (min-width:860px){
+  body{padding-bottom:0;}
+  .bottom-nav{display:none;}
+  .sidebar{
+    display:flex;flex-direction:column;width:220px;flex-shrink:0;
+    padding:24px 12px;border-right:1px solid var(--border);min-height:100vh;
+    gap:4px;
+  }
+  .sidebar .brand{display:flex;align-items:center;gap:10px;padding:0 10px 22px;}
+  .sidebar .brand-mark{width:36px;height:36px;border-radius:11px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;color:var(--accent-strong);}
+  .sidebar .brand h1{font-size:17px;}
+  .sidebar .brand .sub{font-size:11px;color:var(--text-faint);}
+  .side-btn{
+    display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;
+    background:none;border:none;color:var(--text-dim);text-align:left;font-size:14.5px;cursor:pointer;
+  }
+  .side-btn .ic{font-size:17px;width:20px;text-align:center;}
+  .side-btn.active{background:var(--accent-soft);color:var(--accent-strong);font-weight:600;}
+  .main{padding:28px 36px 40px;max-width:920px;}
+  .topbar{display:none;}
+}
+
+/* ---------- cards & primitives ---------- */
+.card{
+  background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-l);
+  padding:18px;margin-bottom:14px;
+}
+.card + .card{margin-top:0;}
+.card-title{font-size:13px;color:var(--text-dim);letter-spacing:.2px;margin-bottom:12px;}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.stack{display:flex;flex-direction:column;gap:10px;}
+
+.btn{
+  border:1px solid var(--border);background:var(--bg-elevated-2);color:var(--text);
+  padding:11px 16px;border-radius:12px;font-size:14.5px;cursor:pointer;font-weight:500;
+  display:inline-flex;align-items:center;gap:6px;justify-content:center;
+  transition:transform .08s ease;
+}
+.btn:active{transform:scale(.97);}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn-primary:hover{background:var(--accent-strong);}
+.btn-ghost{background:none;border:1px solid var(--border);color:var(--text-dim);}
+.btn-danger{background:var(--danger-soft);border-color:var(--danger);color:var(--danger);}
+.btn-block{width:100%;}
+.btn-sm{padding:7px 11px;font-size:13px;border-radius:9px;}
+.btn:disabled{opacity:.45;cursor:not-allowed;}
+
+.field-label{font-size:12.5px;color:var(--text-faint);margin-bottom:6px;display:block;}
+.input{
+  width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);
+  border-radius:11px;padding:11px 13px;font-size:15px;outline:none;
+}
+.input:focus{border-color:var(--accent);}
+.input-lg{font-size:32px;font-family:var(--font-display);padding:14px 14px;text-align:right;}
+.toggle{
+  width:46px;height:27px;border-radius:20px;background:var(--bg-elevated-2);border:1px solid var(--border);
+  position:relative;cursor:pointer;flex-shrink:0;transition:background .15s;
+}
+.toggle.on{background:var(--accent);border-color:var(--accent);}
+.toggle .knob{
+  position:absolute;top:2px;left:2px;width:21px;height:21px;border-radius:50%;background:#fff;
+  transition:left .15s;box-shadow:0 1px 3px rgba(0,0,0,.3);
+}
+.toggle.on .knob{left:21px;}
+
+.pill{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;background:var(--bg-elevated-2);color:var(--text-dim);}
+.pill.success{background:var(--success-soft);color:var(--success);}
+.pill.danger{background:var(--danger-soft);color:var(--danger);}
+
+.chip-group{display:flex;gap:8px;flex-wrap:wrap;}
+.chip{
+  padding:8px 13px;border-radius:11px;border:1px solid var(--border);background:var(--bg);
+  color:var(--text-dim);font-size:13.5px;cursor:pointer;
+}
+.chip.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-strong);font-weight:600;}
+
+/* chain / flow visual */
+.flow{display:flex;flex-direction:column;gap:0;}
+.flow-step{display:flex;align-items:center;justify-content:space-between;padding:10px 2px;}
+.flow-step .lbl{font-size:13px;color:var(--text-dim);}
+.flow-step .val{font-family:var(--font-display);font-size:20px;}
+.flow-step .val.neg{color:var(--danger);}
+.flow-arrow{text-align:center;color:var(--text-faint);font-size:12px;padding:1px 0;}
+.flow-final{
+  background:var(--accent-soft);border-radius:var(--radius-m);padding:14px 16px;margin-top:6px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.flow-final .lbl{font-size:13px;color:var(--accent-strong);font-weight:600;}
+.flow-final .val{font-family:var(--font-display);font-size:28px;color:var(--accent-strong);}
+
+/* employee rows in calc */
+.emp-row{
+  border:1px solid var(--border);border-radius:var(--radius-m);padding:12px;margin-bottom:8px;
+  display:flex;flex-direction:column;gap:8px;background:var(--bg);
+}
+.emp-row .emp-head{display:flex;align-items:center;justify-content:space-between;}
+.emp-row .emp-name{font-weight:600;font-size:14.5px;}
+.emp-row .emp-remove{background:none;border:none;color:var(--text-faint);font-size:18px;cursor:pointer;padding:2px 6px;}
+.emp-inputs{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.emp-inputs.single{grid-template-columns:1fr;}
+.emp-inputs .mini-field label{font-size:11px;color:var(--text-faint);display:block;margin-bottom:3px;}
+.emp-inputs .mini-input{
+  width:100%;background:var(--bg-elevated);border:1px solid var(--border);color:var(--text);
+  border-radius:9px;padding:8px 10px;font-size:14.5px;
+}
+.emp-result{display:flex;justify-content:space-between;font-size:13px;color:var(--text-dim);padding-top:2px;border-top:1px dashed var(--border);}
+.emp-result b{color:var(--text);font-family:var(--font-display);font-size:16px;}
+
+/* table (history/stats) */
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:480px;}
+th{text-align:left;color:var(--text-faint);font-weight:500;font-size:11.5px;padding:6px 8px;border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:9px 8px;border-bottom:1px solid var(--border);white-space:nowrap;}
+tr:last-child td{border-bottom:none;}
+
+/* history list */
+.hist-item{
+  border:1px solid var(--border);border-radius:var(--radius-m);padding:13px 14px;margin-bottom:8px;cursor:pointer;
+  background:var(--bg-elevated-2);
+}
+.hist-item .hi-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;}
+.hist-item .hi-date{font-size:12.5px;color:var(--text-faint);}
+.hist-item .hi-total{font-family:var(--font-display);font-size:19px;}
+.hist-item .hi-meta{display:flex;gap:14px;font-size:12px;color:var(--text-dim);}
+
+.empty-state{
+  text-align:center;padding:40px 20px;color:var(--text-faint);
+}
+.empty-state .ic{font-size:34px;margin-bottom:10px;opacity:.7;}
+.empty-state .msg{font-size:14px;}
+
+.search-box{position:relative;}
+.search-box input{padding-left:34px;}
+.search-box .sic{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text-faint);font-size:14px;}
+
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.stat-box{background:var(--bg-elevated-2);border-radius:var(--radius-m);padding:13px;border:1px solid var(--border);}
+.stat-box .sv{font-family:var(--font-display);font-size:21px;}
+.stat-box .sl{font-size:11.5px;color:var(--text-faint);margin-top:2px;}
+
+/* modal */
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:100;display:none;
+  align-items:flex-end;justify-content:center;
+}
+.modal-backdrop.show{display:flex;}
+.modal{
+  background:var(--bg-elevated);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:520px;
+  max-height:88vh;overflow-y:auto;
+  border:1px solid var(--border);border-bottom:none;
+}
+@media (min-width:860px){
+  .modal-backdrop{align-items:center;}
+  .modal{border-radius:20px;border-bottom:1px solid var(--border);max-width:460px;}
+}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.modal-close{background:none;border:none;color:var(--text-faint);font-size:22px;cursor:pointer;}
+
+/* toast */
+.toast-wrap{position:fixed;top:16px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:8px;z-index:200;pointer-events:none;}
+.toast{
+  background:var(--bg-elevated-2);border:1px solid var(--border);color:var(--text);
+  padding:10px 16px;border-radius:11px;font-size:13.5px;box-shadow:var(--shadow);
+  display:flex;align-items:center;gap:8px;animation:toast-in .2s ease;
+}
+.toast.success{border-color:var(--success);color:var(--success);}
+.toast.error{border-color:var(--danger);color:var(--danger);}
+@keyframes toast-in{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
+
+.alert{
+  background:var(--danger-soft);color:var(--danger);border:1px solid var(--danger);border-radius:11px;
+  padding:10px 13px;font-size:13px;margin-bottom:10px;display:flex;gap:8px;align-items:flex-start;
+}
+.alert.warn{background:var(--accent-soft);color:var(--accent-strong);border-color:var(--accent);}
+
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:12px 2px;border-bottom:1px solid var(--border);}
+.settings-row:last-child{border-bottom:none;}
+.settings-row .sr-title{font-size:14.5px;}
+.settings-row .sr-sub{font-size:12px;color:var(--text-faint);margin-top:1px;}
+
+.confirm-input{margin-top:10px;}
+
+canvas{width:100%;display:block;}
+
+.section-title{font-size:15px;font-weight:600;margin:18px 2px 10px;font-family:var(--font-display);}
+.section-title:first-child{margin-top:0;}
+
+.link-btn{background:none;border:none;color:var(--accent-strong);font-size:13.5px;cursor:pointer;padding:4px 0;font-weight:600;}
+
+.emp-list-item{display:flex;align-items:center;justify-content:space-between;padding:12px 4px;border-bottom:1px solid var(--border);}
+.emp-list-item:last-child{border-bottom:none;}
+.emp-list-item .eli-name{font-size:14.5px;}
+.emp-list-item .eli-actions{display:flex;gap:6px;}
+.emp-list-item.inactive .eli-name{color:var(--text-faint);text-decoration:line-through;}
+
+.filter-row{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;}
+.filter-row::-webkit-scrollbar{display:none;}
+
+@media(max-width:400px){.stat-grid{grid-template-columns:1fr 1fr;}}
+</style>
+</head>
+<body>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">🥃</div>
+      <div><h1>Чаевые</h1><div class="sub">Alaska Bar</div></div>
+    </div>
+    <button class="side-btn active" data-screen="calc"><span class="ic">🧮</span>Расчёт</button>
+    <button class="side-btn" data-screen="employees"><span class="ic">👥</span>Сотрудники</button>
+    <button class="side-btn" data-screen="history"><span class="ic">🕘</span>История</button>
+    <button class="side-btn" data-screen="stats"><span class="ic">📊</span>Статистика</button>
+    <button class="side-btn" data-screen="settings"><span class="ic">⚙️</span>Настройки</button>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark">🥃</div>
+        <div><h1>Чаевые</h1></div>
+      </div>
+    </div>
+
+    <!-- ===================== СЧЁТ / РАСЧЁТ ===================== -->
+    <section class="screen active" id="screen-calc">
+      <div class="card">
+        <div class="card-title">Общие чаевые</div>
+        <input class="input input-lg" inputmode="numeric" id="totalTipsInput" placeholder="0 ₽" value="">
+      </div>
+
+      <div class="card">
+        <div class="row" style="margin-bottom:2px;">
+          <div>
+            <div class="card-title" style="margin-bottom:2px;">Заготовки</div>
+            <div class="sr-sub" style="color:var(--text-faint);font-size:12px;">Вычесть перед распределением</div>
+          </div>
+          <div class="toggle" id="deductionToggle"><div class="knob"></div></div>
+        </div>
+        <div id="deductionOptions" style="display:none;margin-top:12px;">
+          <div class="chip-group" style="margin-bottom:10px;">
+            <div class="chip active" data-dtype="percent">Процент</div>
+            <div class="chip" data-dtype="fixed">Фиксированная сумма</div>
+          </div>
+          <label class="field-label" id="deductionValueLabel">Процент заготовок</label>
+          <input class="input" inputmode="numeric" id="deductionValueInput" placeholder="0">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="flow" id="flowVisual">
+          <div class="flow-step"><span class="lbl">Общие чаевые</span><span class="val num" id="flowTotal">0 ₽</span></div>
+          <div class="flow-arrow" id="flowArrow1" style="display:none;">↓</div>
+          <div class="flow-step" id="flowDeductionRow" style="display:none;">
+            <span class="lbl">Заготовки <span class="pill" id="flowDeductionPct"></span></span>
+            <span class="val neg num" id="flowDeduction">−0 ₽</span>
+          </div>
+          <div class="flow-arrow" id="flowArrow2" style="display:none;">↓</div>
+          <div class="flow-final"><span class="lbl">К распределению</span><span class="val num" id="flowFinal">0 ₽</span></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Режим распределения</div>
+        <div class="chip-group">
+          <div class="chip active" data-mode="percent">По процентам</div>
+          <div class="chip" data-mode="hours">По часам</div>
+          <div class="chip" data-mode="percentHours">Процент × часы</div>
+        </div>
+      </div>
+
+      <div id="calcAlerts"></div>
+
+      <div class="card">
+        <div class="row" style="margin-bottom:12px;">
+          <div class="card-title" style="margin-bottom:0;">Сотрудники расчёта</div>
+          <span class="pill" id="percentSumPill" style="display:none;"></span>
+        </div>
+        <div id="empRowsContainer"></div>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <button class="btn btn-ghost" style="flex:1;" id="addFromBaseBtn">+ Из базы</button>
+          <button class="btn btn-ghost" style="flex:1;" id="quickAddBtn">+ Новый</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <label class="field-label">Дата расчёта</label>
+        <input class="input" type="datetime-local" id="calcDateInput">
+      </div>
+
+      <div class="stack" style="margin-top:4px;">
+        <button class="btn btn-primary btn-block" id="saveCalcBtn">Сохранить расчёт</button>
+        <button class="btn btn-ghost btn-block" id="newCalcBtn">Новый расчёт</button>
+      </div>
+    </section>
+
+    <!-- ===================== СОТРУДНИКИ ===================== -->
+    <section class="screen" id="screen-employees">
+      <h2 style="font-size:19px;margin-bottom:14px;">Сотрудники</h2>
+      <div class="card">
+        <div class="search-box" style="margin-bottom:12px;">
+          <span class="sic">🔍</span>
+          <input class="input" id="empSearchInput" placeholder="Поиск по ФИО">
+        </div>
+        <div id="employeesList"></div>
+        <button class="btn btn-primary btn-block" style="margin-top:10px;" id="addEmployeeBtn">+ Добавить сотрудника</button>
+      </div>
+    </section>
+
+    <!-- ===================== ИСТОРИЯ ===================== -->
+    <section class="screen" id="screen-history">
+      <h2 style="font-size:19px;margin-bottom:14px;">История расчётов</h2>
+      <div class="card">
+        <div class="search-box" style="margin-bottom:10px;">
+          <span class="sic">🔍</span>
+          <input class="input" id="histSearchInput" placeholder="Поиск по сотруднику">
+        </div>
+        <div class="filter-row" style="margin-bottom:8px;" id="histPeriodFilter">
+          <div class="chip active" data-period="all">Всё время</div>
+          <div class="chip" data-period="today">Сегодня</div>
+          <div class="chip" data-period="yesterday">Вчера</div>
+          <div class="chip" data-period="7d">7 дней</div>
+          <div class="chip" data-period="30d">30 дней</div>
+          <div class="chip" data-period="month">Этот месяц</div>
+        </div>
+        <div class="row" style="margin-bottom:12px;">
+          <select class="input" id="histSortSelect" style="width:auto;flex:1;">
+            <option value="new">Новые → старые</option>
+            <option value="old">Старые → новые</option>
+          </select>
+        </div>
+      </div>
+      <div id="historyList"></div>
+    </section>
+
+    <!-- ===================== СТАТИСТИКА ===================== -->
+    <section class="screen" id="screen-stats">
+      <h2 style="font-size:19px;margin-bottom:14px;">Статистика</h2>
+      <div class="card">
+        <div class="filter-row" id="statsPeriodFilter">
+          <div class="chip" data-period="today">Сегодня</div>
+          <div class="chip" data-period="7d">7 дней</div>
+          <div class="chip" data-period="30d">30 дней</div>
+          <div class="chip" data-period="month">Этот месяц</div>
+          <div class="chip" data-period="lastMonth">Прошлый месяц</div>
+          <div class="chip active" data-period="all">Всё время</div>
+        </div>
+      </div>
+
+      <div class="section-title">Общие показатели</div>
+      <div class="stat-grid" id="statsOverview"></div>
+
+      <div class="section-title">Заготовки за период</div>
+      <div class="card" id="statsDeductionsCard"></div>
+
+      <div class="section-title">Чаевые сотрудников</div>
+      <div class="card"><canvas id="empChart" height="220"></canvas></div>
+
+      <div class="section-title">По сотрудникам</div>
+      <div class="card"><div class="table-wrap"><table id="statsEmpTable"></table></div></div>
+    </section>
+
+    <!-- ===================== НАСТРОЙКИ ===================== -->
+    <section class="screen" id="screen-settings">
+      <h2 style="font-size:19px;margin-bottom:14px;">Настройки</h2>
+
+      <div class="card">
+        <div class="settings-row">
+          <div><div class="sr-title">Тема оформления</div><div class="sr-sub">Светлая или тёмная</div></div>
+          <div class="chip-group">
+            <div class="chip" data-theme-choice="dark">Тёмная</div>
+            <div class="chip" data-theme-choice="light">Светлая</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">Управление данными</div>
+      <div class="card stack">
+        <button class="btn btn-ghost btn-block" id="exportJsonBtn">Экспортировать данные (JSON)</button>
+        <button class="btn btn-ghost btn-block" id="importJsonBtn">Импортировать данные</button>
+        <input type="file" id="importFileInput" accept="application/json" style="display:none;">
+        <button class="btn btn-ghost btn-block" id="exportCsvBtn">Экспортировать историю (CSV)</button>
+      </div>
+
+      <div class="section-title">Опасная зона</div>
+      <div class="card stack">
+        <button class="btn btn-danger btn-block" id="clearHistoryBtn">Очистить историю</button>
+        <button class="btn btn-danger btn-block" id="deleteAllEmpBtn">Удалить всех сотрудников</button>
+        <button class="btn btn-danger btn-block" id="fullResetBtn">Полностью очистить приложение</button>
+      </div>
+
+      <div class="card" style="text-align:center;color:var(--text-faint);font-size:12px;">
+        Данные хранятся локально на этом устройстве (IndexedDB) и никуда не отправляются.
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-screen="calc"><span class="ic">🧮</span>Расчёт</button>
+  <button class="nav-btn" data-screen="employees"><span class="ic">👥</span>Люди</button>
+  <button class="nav-btn" data-screen="history"><span class="ic">🕘</span>История</button>
+  <button class="nav-btn" data-screen="stats"><span class="ic">📊</span>Статистика</button>
+  <button class="nav-btn" data-screen="settings"><span class="ic">⚙️</span>Настройки</button>
+</nav>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal" id="modalBody"></div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* =========================================================================
+   INDEXEDDB LAYER
+========================================================================= */
+const DB_NAME = "TipsCalcDB";
+const DB_VERSION = 1;
+let db = null;
+
+function openDB(){
+  return new Promise((resolve, reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e)=>{
+      const _db = e.target.result;
+      if(!_db.objectStoreNames.contains("employees")){
+        const s = _db.createObjectStore("employees", {keyPath:"id"});
+        s.createIndex("name", "name", {unique:false});
+      }
+      if(!_db.objectStoreNames.contains("calculations")){
+        const s = _db.createObjectStore("calculations", {keyPath:"id"});
+        s.createIndex("date", "date", {unique:false});
+      }
+      if(!_db.objectStoreNames.contains("settings")){
+        _db.createObjectStore("settings", {keyPath:"key"});
+      }
+    };
+    req.onsuccess = (e)=>{ db = e.target.result; resolve(db); };
+    req.onerror = (e)=>{ reject(e); };
+  });
+}
+function tx(store, mode){ return db.transaction(store, mode).objectStore(store); }
+function dbGetAll(store){
+  return new Promise((resolve,reject)=>{
+    const r = tx(store,"readonly").getAll();
+    r.onsuccess = ()=>resolve(r.result || []);
+    r.onerror = (e)=>reject(e);
+  });
+}
+function dbPut(store, obj){
+  return new Promise((resolve,reject)=>{
+    const r = tx(store,"readwrite").put(obj);
+    r.onsuccess = ()=>resolve(obj);
+    r.onerror = (e)=>reject(e);
+  });
+}
+function dbDelete(store, key){
+  return new Promise((resolve,reject)=>{
+    const r = tx(store,"readwrite").delete(key);
+    r.onsuccess = ()=>resolve();
+    r.onerror = (e)=>reject(e);
+  });
+}
+function dbClear(store){
+  return new Promise((resolve,reject)=>{
+    const r = tx(store,"readwrite").clear();
+    r.onsuccess = ()=>resolve();
+    r.onerror = (e)=>reject(e);
+  });
+}
+function dbGet(store, key){
+  return new Promise((resolve,reject)=>{
+    const r = tx(store,"readonly").get(key);
+    r.onsuccess = ()=>resolve(r.result || null);
+    r.onerror = (e)=>reject(e);
+  });
+}
+
+/* =========================================================================
+   STATE
+========================================================================= */
+let employees = [];      // {id,name,active,createdAt,updatedAt}
+let calculations = [];   // saved calculations
+let settings = { theme:"dark" };
+
+let calc = freshCalc();
+let editingCalcId = null; // if editing a saved calculation from history
+
+function freshCalc(){
+  return {
+    id: null,
+    date: new Date().toISOString(),
+    totalTips: 0,
+    deductionEnabled: false,
+    deductionType: "percent",   // percent | fixed
+    deductionValue: 0,
+    deductionAmount: 0,
+    tipsToDistribute: 0,
+    mode: "percent",            // percent | hours | percentHours
+    employees: [],              // {employeeId,name,percentage,hours,weight,share,amount}
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+}
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,9); }
+function nowISO(){ return new Date().toISOString(); }
+
+/* =========================================================================
+   FORMATTING HELPERS
+========================================================================= */
+function formatMoney(n){
+  n = Math.round(n||0);
+  return n.toLocaleString("ru-RU") + " ₽";
+}
+function formatMoneySigned(n){
+  n = Math.round(n||0);
+  const sign = n < 0 ? "−" : "";
+  return sign + Math.abs(n).toLocaleString("ru-RU") + " ₽";
+}
+function parseNumberInput(str){
+  if(typeof str !== "string") return Number(str)||0;
+  const cleaned = str.replace(/[^\d.,-]/g,"").replace(",", ".");
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? 0 : n;
+}
+function formatInputNumber(n){
+  n = Math.round(n||0);
+  if(n === 0) return "";
+  return n.toLocaleString("ru-RU");
+}
+function formatDateHuman(iso){
+  const d = new Date(iso);
+  const dd = String(d.getDate()).padStart(2,"0");
+  const mm = String(d.getMonth()+1).padStart(2,"0");
+  const yy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2,"0");
+  const mi = String(d.getMinutes()).padStart(2,"0");
+  return `${dd}.${mm}.${yy} — ${hh}:${mi}`;
+}
+function toDatetimeLocalValue(iso){
+  const d = new Date(iso);
+  const pad = (x)=>String(x).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/* =========================================================================
+   TOASTS
+========================================================================= */
+function toast(msg, type){
+  const wrap = document.getElementById("toastWrap");
+  const el = document.createElement("div");
+  el.className = "toast" + (type ? " "+type : "");
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(()=>{ el.style.opacity="0"; el.style.transform="translateY(-8px)"; el.style.transition="all .2s"; setTimeout(()=>el.remove(),200); }, 2200);
+}
+
+/* =========================================================================
+   ROUNDING — largest remainder method, exact sum guaranteed
+========================================================================= */
+function distributeRounded(total, shares){
+  total = Math.round(total);
+  if(shares.length === 0) return [];
+  const shareSum = shares.reduce((a,b)=>a+b,0);
+  const norm = shareSum > 0 ? shares.map(s=>s/shareSum) : shares.map(()=>1/shares.length);
+  const raw = norm.map(s=>total*s);
+  const floors = raw.map(Math.floor);
+  let allocated = floors.reduce((a,b)=>a+b,0);
+  let remainder = total - allocated;
+  const order = raw.map((r,i)=>({i, frac:r-Math.floor(r)})).sort((a,b)=>b.frac-a.frac);
+  let k=0;
+  while(remainder > 0 && order.length){
+    floors[order[k % order.length].i]++;
+    remainder--;
+    k++;
+  }
+  return floors;
+}
+
+/* =========================================================================
+   CALCULATION ENGINE
+========================================================================= */
+function computeDeduction(){
+  const total = calc.totalTips;
+  if(!calc.deductionEnabled){
+    calc.deductionAmount = 0;
+  } else if(calc.deductionType === "percent"){
+    const pct = clamp(calc.deductionValue, 0, 100);
+    calc.deductionAmount = Math.round(total * pct / 100);
+  } else {
+    calc.deductionAmount = clamp(calc.deductionValue, 0, total);
+  }
+  calc.tipsToDistribute = Math.max(0, total - calc.deductionAmount);
+}
+function clamp(n,min,max){ return Math.min(max, Math.max(min, n)); }
+
+function computeEmployeeShares(){
+  const total = calc.tipsToDistribute;
+  const emps = calc.employees;
+  if(emps.length === 0) return;
+
+  let weights;
+  if(calc.mode === "percent"){
+    weights = emps.map(e => Math.max(0, e.percentage||0));
+  } else if(calc.mode === "hours"){
+    weights = emps.map(e => Math.max(0, e.hours||0));
+  } else { // percentHours
+    weights = emps.map(e => Math.max(0, (e.percentage||0) * (e.hours||0)));
+  }
+
+  emps.forEach((e,i)=> e.weight = weights[i]);
+
+  const weightSum = weights.reduce((a,b)=>a+b,0);
+  const rounded = weightSum > 0 ? distributeRounded(total, weights) : emps.map(()=>0);
+
+  emps.forEach((e,i)=>{
+    e.share = weightSum > 0 ? weights[i]/weightSum : 0;
+    e.amount = rounded[i] || 0;
+  });
+}
+
+function recalcAll(){
+  computeDeduction();
+  computeEmployeeShares();
+}
+
+/* =========================================================================
+   VALIDATION
+========================================================================= */
+function getValidationIssues(){
+  const issues = [];
+  if(calc.totalTips <= 0) issues.push("Введите сумму чаевых");
+  if(calc.deductionEnabled){
+    if(calc.deductionType === "percent" && (calc.deductionValue < 0 || calc.deductionValue > 100)) issues.push("Процент заготовок должен быть от 0 до 100");
+    if(calc.deductionType === "fixed" && (calc.deductionValue < 0 || calc.deductionValue > calc.totalTips)) issues.push("Сумма заготовок не может превышать общую сумму чаевых");
+  }
+  if(calc.employees.length === 0) issues.push("Добавьте хотя бы одного сотрудника");
+  calc.employees.forEach(e=>{
+    if(!e.name || !e.name.trim()) issues.push("У сотрудника отсутствует ФИО");
+    if(calc.mode !== "hours" && (e.percentage < 0)) issues.push(`${e.name}: процент не может быть отрицательным`);
+    if(calc.mode !== "percent" && (e.hours < 0)) issues.push(`${e.name}: часы не могут быть отрицательными`);
+    if(calc.mode === "hours" && (e.hours||0) === 0) issues.push(`${e.name}: укажите отработанные часы`);
+  });
+  if(calc.mode === "percent" && calc.employees.length){
+    const sum = calc.employees.reduce((a,e)=>a+(e.percentage||0),0);
+    if(Math.round(sum) !== 100) issues.push(`Проценты должны составлять 100% (сейчас ${round2(sum)}%)`);
+  }
+  if(calc.mode === "hours" || calc.mode === "percentHours"){
+    const wsum = calc.employees.reduce((a,e)=> a + (calc.mode==="hours" ? (e.hours||0) : (e.percentage||0)*(e.hours||0)), 0);
+    if(wsum === 0 && calc.employees.length) issues.push("Итоговый вес распределения равен нулю — проверьте часы/проценты");
+  }
+  return issues;
+}
+function round2(n){ return Math.round(n*100)/100; }
+
+/* =========================================================================
+   RENDER: CALC SCREEN
+========================================================================= */
+function renderCalcScreen(){
+  document.getElementById("totalTipsInput").value = formatInputNumber(calc.totalTips);
+
+  const toggle = document.getElementById("deductionToggle");
+  toggle.classList.toggle("on", calc.deductionEnabled);
+  document.getElementById("deductionOptions").style.display = calc.deductionEnabled ? "block" : "none";
+  document.querySelectorAll("[data-dtype]").forEach(c=>c.classList.toggle("active", c.dataset.dtype===calc.deductionType));
+  document.getElementById("deductionValueLabel").textContent = calc.deductionType==="percent" ? "Процент заготовок" : "Сумма заготовок, ₽";
+  document.getElementById("deductionValueInput").value = calc.deductionValue ? (calc.deductionType==="percent" ? calc.deductionValue : formatInputNumber(calc.deductionValue)) : "";
+
+  document.querySelectorAll("[data-mode]").forEach(c=>c.classList.toggle("active", c.dataset.mode===calc.mode));
+
+  renderFlow();
+  renderEmpRows();
+  renderCalcAlerts();
+
+  document.getElementById("calcDateInput").value = toDatetimeLocalValue(calc.date);
+}
+
+function renderFlow(){
+  document.getElementById("flowTotal").textContent = formatMoney(calc.totalTips);
+  const showDed = calc.deductionEnabled && calc.deductionAmount > 0 || calc.deductionEnabled;
+  document.getElementById("flowArrow1").style.display = calc.deductionEnabled ? "block" : "none";
+  document.getElementById("flowArrow2").style.display = calc.deductionEnabled ? "block" : "none";
+  document.getElementById("flowDeductionRow").style.display = calc.deductionEnabled ? "flex" : "none";
+  document.getElementById("flowDeduction").textContent = formatMoneySigned(-calc.deductionAmount);
+  const pctLabel = calc.deductionType === "percent" ? `${calc.deductionValue||0}%` : "фикс.";
+  document.getElementById("flowDeductionPct").textContent = pctLabel;
+  document.getElementById("flowFinal").textContent = formatMoney(calc.tipsToDistribute);
+}
+
+function renderEmpRows(){
+  const container = document.getElementById("empRowsContainer");
+  container.innerHTML = "";
+  if(calc.employees.length === 0){
+    container.innerHTML = `<div class="empty-state" style="padding:24px 10px;"><div class="ic">👤</div><div class="msg">Пока нет сотрудников в этом расчёте</div></div>`;
+  }
+  calc.employees.forEach((e, idx)=>{
+    const row = document.createElement("div");
+    row.className = "emp-row";
+    let inputsHtml = "";
+    if(calc.mode === "percent"){
+      inputsHtml = `<div class="emp-inputs single">
+        <div class="mini-field"><label>Процент, %</label><input class="mini-input" type="number" inputmode="decimal" data-field="percentage" data-idx="${idx}" value="${e.percentage||""}"></div>
+      </div>`;
+    } else if(calc.mode === "hours"){
+      inputsHtml = `<div class="emp-inputs single">
+        <div class="mini-field"><label>Часы</label><input class="mini-input" type="number" inputmode="decimal" data-field="hours" data-idx="${idx}" value="${e.hours||""}"></div>
+      </div>`;
+    } else {
+      inputsHtml = `<div class="emp-inputs">
+        <div class="mini-field"><label>Коэффициент, %</label><input class="mini-input" type="number" inputmode="decimal" data-field="percentage" data-idx="${idx}" value="${e.percentage||""}"></div>
+        <div class="mini-field"><label>Часы</label><input class="mini-input" type="number" inputmode="decimal" data-field="hours" data-idx="${idx}" value="${e.hours||""}"></div>
+      </div>`;
+    }
+    row.innerHTML = `
+      <div class="emp-head">
+        <div class="emp-name">${escapeHtml(e.name)}</div>
+        <button class="emp-remove" data-remove="${idx}">✕</button>
+      </div>
+      ${inputsHtml}
+      <div class="emp-result">
+        <span>Доля: ${(e.share*100).toFixed(2)}%</span>
+        <b class="num">${formatMoney(e.amount)}</b>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+
+  if(calc.mode === "percent" && calc.employees.length){
+    const sum = calc.employees.reduce((a,e)=>a+(e.percentage||0),0);
+    const pill = document.getElementById("percentSumPill");
+    pill.style.display = "inline-flex";
+    pill.textContent = `Всего: ${round2(sum)}%`;
+    pill.className = "pill " + (Math.round(sum)===100 ? "success" : "danger");
+  } else {
+    document.getElementById("percentSumPill").style.display = "none";
+  }
+}
+
+function renderCalcAlerts(){
+  const box = document.getElementById("calcAlerts");
+  box.innerHTML = "";
+  const hasAnyInput = calc.totalTips > 0 || calc.employees.length > 0;
+  if(!hasAnyInput) return;
+  const issues = getValidationIssues();
+  if(issues.length){
+    const div = document.createElement("div");
+    div.className = "alert warn";
+    div.innerHTML = "⚠️ " + issues.slice(0,3).join(" · ");
+    box.appendChild(div);
+  }
+}
+
+function escapeHtml(s){
+  return String(s||"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+/* ---- calc screen event wiring ---- */
+document.getElementById("totalTipsInput").addEventListener("input", (e)=>{
+  calc.totalTips = parseNumberInput(e.target.value);
+  recalcAll();
+  renderFlow(); renderEmpRows(); renderCalcAlerts();
+});
+document.getElementById("totalTipsInput").addEventListener("blur", (e)=>{
+  e.target.value = formatInputNumber(calc.totalTips);
+});
+
+document.getElementById("deductionToggle").addEventListener("click", ()=>{
+  calc.deductionEnabled = !calc.deductionEnabled;
+  recalcAll();
+  renderCalcScreen();
+});
+
+document.querySelectorAll("[data-dtype]").forEach(chip=>{
+  chip.addEventListener("click", ()=>{
+    calc.deductionType = chip.dataset.dtype;
+    calc.deductionValue = 0;
+    recalcAll();
+    renderCalcScreen();
+  });
+});
+
+document.getElementById("deductionValueInput").addEventListener("input",(e)=>{
+  calc.deductionValue = parseNumberInput(e.target.value);
+  recalcAll();
+  renderFlow(); renderCalcAlerts(); renderEmpRows();
+});
+
+document.querySelectorAll("[data-mode]").forEach(chip=>{
+  chip.addEventListener("click", ()=>{
+    calc.mode = chip.dataset.mode;
+    recalcAll();
+    renderCalcScreen();
+  });
+});
+
+document.getElementById("empRowsContainer").addEventListener("input",(e)=>{
+  const t = e.target;
+  if(t.dataset.field !== undefined){
+    const idx = parseInt(t.dataset.idx,10);
+    const field = t.dataset.field;
+    calc.employees[idx][field] = parseNumberInput(t.value);
+    recalcAll();
+    renderEmpRowsPreserveFocus();
+    renderCalcAlerts();
+  }
+});
+function renderEmpRowsPreserveFocus(){
+  // re-render but keep focus by only updating result text + pill, not full innerHTML rebuild
+  calc.employees.forEach((e,idx)=>{
+    const row = document.querySelectorAll("#empRowsContainer .emp-row")[idx];
+    if(!row) return;
+    const resEl = row.querySelector(".emp-result");
+    resEl.innerHTML = `<span>Доля: ${(e.share*100).toFixed(2)}%</span><b class="num">${formatMoney(e.amount)}</b>`;
+  });
+  if(calc.mode === "percent" && calc.employees.length){
+    const sum = calc.employees.reduce((a,e)=>a+(e.percentage||0),0);
+    const pill = document.getElementById("percentSumPill");
+    pill.style.display = "inline-flex";
+    pill.textContent = `Всего: ${round2(sum)}%`;
+    pill.className = "pill " + (Math.round(sum)===100 ? "success" : "danger");
+  }
+}
+
+document.getElementById("empRowsContainer").addEventListener("change",(e)=>{
+  const t = e.target;
+  if(t.dataset.field === "percentage"){
+    syncDefaultPercentage(parseInt(t.dataset.idx,10));
+  }
+});
+
+document.getElementById("empRowsContainer").addEventListener("click",(e)=>{
+  if(e.target.dataset.remove !== undefined){
+    const idx = parseInt(e.target.dataset.remove,10);
+    calc.employees.splice(idx,1);
+    recalcAll();
+    renderEmpRows();
+    renderCalcAlerts();
+  }
+});
+
+document.getElementById("calcDateInput").addEventListener("change",(e)=>{
+  if(e.target.value) calc.date = new Date(e.target.value).toISOString();
+});
+
+document.getElementById("addFromBaseBtn").addEventListener("click", openAddFromBaseModal);
+document.getElementById("quickAddBtn").addEventListener("click", openQuickAddModal);
+
+document.getElementById("newCalcBtn").addEventListener("click", ()=>{
+  calc = freshCalc();
+  editingCalcId = null;
+  renderCalcScreen();
+  toast("Новый расчёт создан");
+});
+
+document.getElementById("saveCalcBtn").addEventListener("click", saveCalculation);
+
+/* =========================================================================
+   MODALS
+========================================================================= */
+const modalBackdrop = document.getElementById("modalBackdrop");
+const modalBody = document.getElementById("modalBody");
+function openModal(html){
+  modalBody.innerHTML = html;
+  modalBackdrop.classList.add("show");
+}
+function closeModal(){
+  modalBackdrop.classList.remove("show");
+  modalBody.innerHTML = "";
+}
+modalBackdrop.addEventListener("click",(e)=>{ if(e.target === modalBackdrop) closeModal(); });
+
+function openAddFromBaseModal(){
+  const availableEmps = employees.filter(e=>e.active && !calc.employees.some(ce=>ce.employeeId===e.id));
+  openModal(`
+    <div class="modal-head"><h3>Добавить из базы</h3><button class="modal-close" id="mClose">✕</button></div>
+    <div class="search-box" style="margin-bottom:12px;"><span class="sic">🔍</span><input class="input" id="modalSearch" placeholder="Поиск по ФИО"></div>
+    <div id="modalEmpList"></div>
+  `);
+  document.getElementById("mClose").addEventListener("click", closeModal);
+  function renderList(filter){
+    const list = document.getElementById("modalEmpList");
+    const filtered = availableEmps.filter(e=> e.name.toLowerCase().includes((filter||"").toLowerCase()));
+    if(filtered.length === 0){
+      list.innerHTML = `<div class="empty-state" style="padding:20px;"><div class="msg">Никого не найдено</div></div>`;
+      return;
+    }
+    list.innerHTML = filtered.map(e=>`<div class="emp-list-item"><div class="eli-name">${escapeHtml(e.name)}</div><button class="btn btn-sm btn-primary" data-pick="${e.id}">Добавить</button></div>`).join("");
+  }
+  renderList("");
+  document.getElementById("modalSearch").addEventListener("input",(e)=>renderList(e.target.value));
+  document.getElementById("modalEmpList").addEventListener("click",(e)=>{
+    if(e.target.dataset.pick){
+      const emp = employees.find(x=>x.id===e.target.dataset.pick);
+      addEmployeeToCalc(emp);
+      closeModal();
+    }
+  });
+}
+
+function openQuickAddModal(){
+  openModal(`
+    <div class="modal-head"><h3>Новый сотрудник</h3><button class="modal-close" id="mClose">✕</button></div>
+    <label class="field-label">ФИО</label>
+    <input class="input" id="quickAddName" placeholder="Иванов Иван Иванович" autofocus>
+    <button class="btn btn-primary btn-block" style="margin-top:14px;" id="quickAddConfirm">Добавить</button>
+  `);
+  document.getElementById("mClose").addEventListener("click", closeModal);
+  const confirmAdd = async ()=>{
+    const name = document.getElementById("quickAddName").value.trim();
+    if(!name){ toast("Введите ФИО","error"); return; }
+    const emp = { id: uid(), name, defaultPercentage:0, active:true, createdAt: nowISO(), updatedAt: nowISO() };
+    employees.push(emp);
+    await dbPut("employees", emp);
+    addEmployeeToCalc(emp);
+    closeModal();
+    toast("Сотрудник добавлен ✓","success");
+  };
+  document.getElementById("quickAddConfirm").addEventListener("click", confirmAdd);
+  document.getElementById("quickAddName").addEventListener("keydown",(e)=>{ if(e.key==="Enter") confirmAdd(); });
+}
+
+function addEmployeeToCalc(emp){
+  calc.employees.push({ employeeId: emp.id, name: emp.name, percentage: emp.defaultPercentage || 0, hours:0, weight:0, share:0, amount:0 });
+  recalcAll();
+  renderEmpRows();
+  renderCalcAlerts();
+}
+
+// Keep an employee's saved default percentage in sync when it's edited inside a calculation
+async function syncDefaultPercentage(idx){
+  const row = calc.employees[idx];
+  if(!row || !row.employeeId) return;
+  const emp = employees.find(e=>e.id===row.employeeId);
+  if(!emp) return;
+  if(emp.defaultPercentage === row.percentage) return;
+  emp.defaultPercentage = row.percentage;
+  emp.updatedAt = nowISO();
+  await dbPut("employees", emp);
+}
+
+/* =========================================================================
+   SAVE CALCULATION
+========================================================================= */
+async function saveCalculation(){
+  recalcAll();
+  const issues = getValidationIssues();
+  if(issues.length){
+    renderCalcAlerts();
+    const box = document.getElementById("calcAlerts");
+    box.innerHTML = `<div class="alert">⚠️ ${issues[0]}</div>`;
+    toast(issues[0], "error");
+    return;
+  }
+  const now = nowISO();
+  if(editingCalcId){
+    calc.id = editingCalcId;
+    calc.updatedAt = now;
+  } else {
+    calc.id = uid();
+    calc.createdAt = now;
+    calc.updatedAt = now;
+  }
+  const toSave = JSON.parse(JSON.stringify(calc));
+  await dbPut("calculations", toSave);
+  const idx = calculations.findIndex(c=>c.id===toSave.id);
+  if(idx>=0) calculations[idx] = toSave; else calculations.push(toSave);
+
+  toast("Расчёт сохранён ✓","success");
+  editingCalcId = null;
+  renderStatsScreen();
+  renderHistoryScreen();
+}
+
+/* =========================================================================
+   EMPLOYEES SCREEN
+========================================================================= */
+function renderEmployeesScreen(){
+  const search = (document.getElementById("empSearchInput").value||"").toLowerCase();
+  const list = document.getElementById("employeesList");
+  const filtered = employees.filter(e=>e.name.toLowerCase().includes(search))
+    .sort((a,b)=> (b.active - a.active) || a.name.localeCompare(b.name,"ru"));
+  if(filtered.length===0){
+    list.innerHTML = `<div class="empty-state"><div class="ic">👥</div><div class="msg">Сотрудников пока нет</div></div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(e=>`
+    <div class="emp-list-item ${e.active?"":"inactive"}">
+      <div>
+        <div class="eli-name">${escapeHtml(e.name)}</div>
+        ${e.defaultPercentage ? `<div style="font-size:11.5px;color:var(--text-faint);">Процент по умолчанию: ${e.defaultPercentage}%</div>` : ""}
+      </div>
+      <div class="eli-actions">
+        <button class="btn btn-sm btn-ghost" data-edit="${e.id}">✎</button>
+        <button class="btn btn-sm btn-ghost" data-toggle="${e.id}">${e.active?"Отключить":"Включить"}</button>
+        <button class="btn btn-sm btn-danger" data-del="${e.id}">✕</button>
+      </div>
+    </div>
+  `).join("");
+}
+document.getElementById("empSearchInput").addEventListener("input", renderEmployeesScreen);
+
+document.getElementById("employeesList").addEventListener("click", async (e)=>{
+  const t = e.target;
+  if(t.dataset.edit){
+    const emp = employees.find(x=>x.id===t.dataset.edit);
+    openEditEmployeeModal(emp);
+  } else if(t.dataset.toggle){
+    const emp = employees.find(x=>x.id===t.dataset.toggle);
+    emp.active = !emp.active;
+    emp.updatedAt = nowISO();
+    await dbPut("employees", emp);
+    renderEmployeesScreen();
+    toast(emp.active ? "Сотрудник активирован" : "Сотрудник отключён");
+  } else if(t.dataset.del){
+    confirmDialog({
+      title: "Удалить сотрудника?",
+      message: "Сотрудник будет удалён из базы. Сохранённые расчёты с его участием не изменятся.",
+      confirmWord: null,
+      onConfirm: async ()=>{
+        await dbDelete("employees", t.dataset.del);
+        employees = employees.filter(x=>x.id!==t.dataset.del);
+        renderEmployeesScreen();
+        toast("Сотрудник удалён");
+      }
+    });
+  }
+});
+
+document.getElementById("addEmployeeBtn").addEventListener("click", ()=>openEditEmployeeModal(null));
+
+function openEditEmployeeModal(emp){
+  const isEdit = !!emp;
+  openModal(`
+    <div class="modal-head"><h3>${isEdit?"Редактировать":"Новый сотрудник"}</h3><button class="modal-close" id="mClose">✕</button></div>
+    <label class="field-label">ФИО</label>
+    <input class="input" id="empNameInput" value="${isEdit?escapeHtml(emp.name):""}" placeholder="Иванов Иван Иванович">
+    <label class="field-label" style="margin-top:12px;">Процент по умолчанию, %</label>
+    <input class="input" id="empPercentInput" type="number" inputmode="decimal" value="${isEdit && emp.defaultPercentage ? emp.defaultPercentage : ""}" placeholder="Необязательно">
+    <div style="font-size:12px;color:var(--text-faint);margin-top:6px;">Подставляется автоматически при добавлении сотрудника в расчёт и обновляется, когда вы меняете его процент внутри расчёта.</div>
+    <button class="btn btn-primary btn-block" style="margin-top:14px;" id="empSaveBtn">${isEdit?"Сохранить":"Добавить"}</button>
+  `);
+  document.getElementById("mClose").addEventListener("click", closeModal);
+  document.getElementById("empSaveBtn").addEventListener("click", async ()=>{
+    const name = document.getElementById("empNameInput").value.trim();
+    if(!name){ toast("Введите ФИО","error"); return; }
+    const pct = parseNumberInput(document.getElementById("empPercentInput").value);
+    if(isEdit){
+      emp.name = name; emp.defaultPercentage = pct || 0; emp.updatedAt = nowISO();
+      await dbPut("employees", emp);
+      toast("Изменения сохранены ✓","success");
+    } else {
+      const newEmp = { id: uid(), name, defaultPercentage: pct || 0, active:true, createdAt: nowISO(), updatedAt: nowISO() };
+      employees.push(newEmp);
+      await dbPut("employees", newEmp);
+      toast("Сотрудник добавлен ✓","success");
+    }
+    closeModal();
+    renderEmployeesScreen();
+  });
+}
+
+/* =========================================================================
+   CONFIRM DIALOG (with optional type-to-confirm)
+========================================================================= */
+function confirmDialog({title, message, confirmWord, onConfirm}){
+  openModal(`
+    <div class="modal-head"><h3>${title}</h3><button class="modal-close" id="mClose">✕</button></div>
+    <div class="alert">⚠️ ${message}${confirmWord?"<br>Это действие нельзя отменить.":""}</div>
+    ${confirmWord ? `<label class="field-label">Введите «${confirmWord}» для подтверждения</label><input class="input confirm-input" id="confirmWordInput" placeholder="${confirmWord}">` : ""}
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn btn-ghost" style="flex:1;" id="cCancel">Отмена</button>
+      <button class="btn btn-danger" style="flex:1;" id="cConfirm">Подтвердить</button>
+    </div>
+  `);
+  document.getElementById("mClose").addEventListener("click", closeModal);
+  document.getElementById("cCancel").addEventListener("click", closeModal);
+  document.getElementById("cConfirm").addEventListener("click", ()=>{
+    if(confirmWord){
+      const val = document.getElementById("confirmWordInput").value.trim();
+      if(val !== confirmWord){ toast("Текст не совпадает","error"); return; }
+    }
+    closeModal();
+    onConfirm();
+  });
+}
+
+/* =========================================================================
+   HISTORY SCREEN
+========================================================================= */
+let histPeriod = "all";
+let histSort = "new";
+
+function periodRange(period){
+  const now = new Date();
+  const startOfDay = (d)=> new Date(d.getFullYear(),d.getMonth(),d.getDate(),0,0,0);
+  if(period==="today") return [startOfDay(now), now];
+  if(period==="yesterday"){
+    const y = new Date(now); y.setDate(y.getDate()-1);
+    return [startOfDay(y), startOfDay(now)];
+  }
+  if(period==="7d"){ const s=new Date(now); s.setDate(s.getDate()-7); return [s, now]; }
+  if(period==="30d"){ const s=new Date(now); s.setDate(s.getDate()-30); return [s, now]; }
+  if(period==="month"){ return [new Date(now.getFullYear(), now.getMonth(),1), now]; }
+  if(period==="lastMonth"){
+    const s = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    const e = new Date(now.getFullYear(), now.getMonth(), 1);
+    return [s,e];
+  }
+  return [null,null];
+}
+
+function renderHistoryScreen(){
+  const search = (document.getElementById("histSearchInput").value||"").toLowerCase();
+  const [start,end] = periodRange(histPeriod);
+  let filtered = calculations.filter(c=>{
+    if(start && new Date(c.date) < start) return false;
+    if(end && histPeriod!=="today" && histPeriod!=="yesterday" && histPeriod!=="month" && histPeriod!=="lastMonth" && new Date(c.date) > end) return false;
+    if((histPeriod==="today"||histPeriod==="month") && new Date(c.date) > new Date()) {/*noop*/}
+    if(search){
+      return c.employees.some(e=>e.name.toLowerCase().includes(search));
+    }
+    return true;
+  });
+  filtered.sort((a,b)=> histSort==="new" ? new Date(b.date)-new Date(a.date) : new Date(a.date)-new Date(b.date));
+
+  const list = document.getElementById("historyList");
+  if(filtered.length===0){
+    list.innerHTML = `<div class="empty-state"><div class="ic">🕘</div><div class="msg">Расчётов не найдено</div></div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(c=>`
+    <div class="hist-item" data-open="${c.id}">
+      <div class="hi-top"><span class="hi-date">${formatDateHuman(c.date)}</span><span class="hi-total num">${formatMoney(c.totalTips)}</span></div>
+      <div class="hi-meta">
+        <span>${c.deductionEnabled ? "Заготовки: "+formatMoney(c.deductionAmount) : "Без заготовок"}</span>
+        <span>К распределению: ${formatMoney(c.tipsToDistribute)}</span>
+        <span>Сотрудников: ${c.employees.length}</span>
+      </div>
+    </div>
+  `).join("");
+}
+document.getElementById("histSearchInput").addEventListener("input", renderHistoryScreen);
+document.getElementById("histSortSelect").addEventListener("change",(e)=>{ histSort = e.target.value; renderHistoryScreen(); });
+document.getElementById("histPeriodFilter").addEventListener("click",(e)=>{
+  if(e.target.dataset.period){
+    document.querySelectorAll("#histPeriodFilter .chip").forEach(c=>c.classList.remove("active"));
+    e.target.classList.add("active");
+    histPeriod = e.target.dataset.period;
+    renderHistoryScreen();
+  }
+});
+document.getElementById("historyList").addEventListener("click",(e)=>{
+  const item = e.target.closest("[data-open]");
+  if(item) openHistoryDetail(item.dataset.open);
+});
+
+function openHistoryDetail(id){
+  const c = calculations.find(x=>x.id===id);
+  if(!c) return;
+  const rows = c.employees.map(e=>`
+    <tr><td>${escapeHtml(e.name)}</td>
+    ${c.mode!=="hours" ? `<td>${e.percentage||0}%</td>`:""}
+    ${c.mode!=="percent" ? `<td>${e.hours||0}</td>`:""}
+    <td>${(e.share*100).toFixed(2)}%</td>
+    <td class="num">${formatMoney(e.amount)}</td></tr>
+  `).join("");
+  const modeLabel = c.mode==="percent"?"По процентам":c.mode==="hours"?"По часам":"Процент × часы";
+  openModal(`
+    <div class="modal-head"><h3>${formatDateHuman(c.date)}</h3><button class="modal-close" id="mClose">✕</button></div>
+    <div class="flow">
+      <div class="flow-step"><span class="lbl">Общие чаевые</span><span class="val num">${formatMoney(c.totalTips)}</span></div>
+      ${c.deductionEnabled ? `<div class="flow-step"><span class="lbl">Заготовки</span><span class="val neg num">${formatMoneySigned(-c.deductionAmount)}</span></div>`:""}
+      <div class="flow-final"><span class="lbl">К распределению</span><span class="val num">${formatMoney(c.tipsToDistribute)}</span></div>
+    </div>
+    <div class="pill" style="margin:12px 0;">${modeLabel}</div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Сотрудник</th>${c.mode!=="hours"?"<th>%</th>":""}${c.mode!=="percent"?"<th>Часы</th>":""}<th>Доля</th><th>Сумма</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn btn-ghost" style="flex:1;" id="editHistBtn">Редактировать</button>
+      <button class="btn btn-danger" style="flex:1;" id="delHistBtn">Удалить</button>
+    </div>
+  `);
+  document.getElementById("mClose").addEventListener("click", closeModal);
+  document.getElementById("editHistBtn").addEventListener("click", ()=>{
+    calc = JSON.parse(JSON.stringify(c));
+    editingCalcId = c.id;
+    closeModal();
+    switchScreen("calc");
+    renderCalcScreen();
+    toast("Расчёт открыт для редактирования");
+  });
+  document.getElementById("delHistBtn").addEventListener("click", ()=>{
+    confirmDialog({
+      title:"Удалить расчёт?",
+      message:"Запись будет удалена из истории, статистика пересчитается.",
+      confirmWord:"УДАЛИТЬ",
+      onConfirm: async ()=>{
+        await dbDelete("calculations", c.id);
+        calculations = calculations.filter(x=>x.id!==c.id);
+        closeModal();
+        renderHistoryScreen();
+        renderStatsScreen();
+        toast("Расчёт удалён");
+      }
+    });
+  });
+}
+
+/* =========================================================================
+   STATS SCREEN
+========================================================================= */
+let statsPeriod = "all";
+
+document.getElementById("statsPeriodFilter").addEventListener("click",(e)=>{
+  if(e.target.dataset.period){
+    document.querySelectorAll("#statsPeriodFilter .chip").forEach(c=>c.classList.remove("active"));
+    e.target.classList.add("active");
+    statsPeriod = e.target.dataset.period;
+    renderStatsScreen();
+  }
+});
+
+function calcsInPeriod(period){
+  const [start,end] = periodRange(period);
+  return calculations.filter(c=>{
+    const d = new Date(c.date);
+    if(start && d < start) return false;
+    if(end && d > end) return false;
+    return true;
+  });
+}
+
+function renderStatsScreen(){
+  const list = calcsInPeriod(statsPeriod);
+  const totalTips = list.reduce((a,c)=>a+c.totalTips,0);
+  const totalDeducted = list.reduce((a,c)=>a+c.deductionAmount,0);
+  const totalDistributed = list.reduce((a,c)=>a+c.tipsToDistribute,0);
+  const totalHours = list.reduce((a,c)=>a + c.employees.reduce((s,e)=>s+(e.hours||0),0), 0);
+  const count = list.length;
+  const avgPerCalc = count ? totalDistributed/count : 0;
+  const avgPerHour = totalHours ? totalDistributed/totalHours : 0;
+
+  document.getElementById("statsOverview").innerHTML = `
+    <div class="stat-box"><div class="sv num">${formatMoney(totalTips)}</div><div class="sl">Всего чаевых</div></div>
+    <div class="stat-box"><div class="sv num">${formatMoney(totalDeducted)}</div><div class="sl">Удержано на заготовки</div></div>
+    <div class="stat-box"><div class="sv num">${formatMoney(totalDistributed)}</div><div class="sl">Распределено сотрудникам</div></div>
+    <div class="stat-box"><div class="sv num">${count}</div><div class="sl">Расчётов</div></div>
+    <div class="stat-box"><div class="sv num">${round2(totalHours)}</div><div class="sl">Отработано часов</div></div>
+    <div class="stat-box"><div class="sv num">${formatMoney(avgPerCalc)}</div><div class="sl">Среднее за расчёт</div></div>
+  `;
+
+  const avgPct = list.filter(c=>c.deductionEnabled && c.deductionType==="percent");
+  const avgPctVal = avgPct.length ? avgPct.reduce((a,c)=>a+c.deductionValue,0)/avgPct.length : 0;
+  document.getElementById("statsDeductionsCard").innerHTML = totalTips === 0 ? `<div class="empty-state" style="padding:14px;"><div class="msg">Нет данных за период</div></div>` : `
+    <div class="flow">
+      <div class="flow-step"><span class="lbl">Общие чаевые</span><span class="val num">${formatMoney(totalTips)}</span></div>
+      <div class="flow-step"><span class="lbl">Заготовки</span><span class="val neg num">${formatMoneySigned(-totalDeducted)}</span></div>
+      <div class="flow-final"><span class="lbl">К распределению</span><span class="val num">${formatMoney(totalDistributed)}</span></div>
+    </div>
+    <div style="margin-top:8px;font-size:12.5px;color:var(--text-faint);">Средний процент заготовок: ${round2(avgPctVal)}%</div>
+  `;
+
+  // per-employee aggregation
+  const empMap = {};
+  list.forEach(c=>{
+    c.employees.forEach(e=>{
+      const key = e.employeeId || e.name;
+      if(!empMap[key]) empMap[key] = { name:e.name, calcs:0, hours:0, tips:0 };
+      empMap[key].calcs++;
+      empMap[key].hours += (e.hours||0);
+      empMap[key].tips += (e.amount||0);
+    });
+  });
+  const empStats = Object.values(empMap).sort((a,b)=>b.tips-a.tips);
+
+  const table = document.getElementById("statsEmpTable");
+  if(empStats.length===0){
+    table.parentElement.innerHTML = `<div class="empty-state" style="padding:14px;"><div class="msg">Нет данных за период</div></div>`;
+  } else {
+    table.innerHTML = `
+      <thead><tr><th>Сотрудник</th><th>Расчётов</th><th>Часы</th><th>Чаевые</th><th>Ср./смена</th><th>Ср./час</th></tr></thead>
+      <tbody>${empStats.map(e=>`
+        <tr><td>${escapeHtml(e.name)}</td><td>${e.calcs}</td><td>${round2(e.hours)}</td>
+        <td class="num">${formatMoney(e.tips)}</td>
+        <td class="num">${formatMoney(e.calcs?e.tips/e.calcs:0)}</td>
+        <td class="num">${formatMoney(e.hours?e.tips/e.hours:0)}</td></tr>
+      `).join("")}</tbody>`;
+  }
+
+  drawEmpChart(empStats.slice(0,8));
+}
+
+function drawEmpChart(data){
+  const canvas = document.getElementById("empChart");
+  if(canvas.offsetParent === null) return; // screen not visible — skip, will redraw when shown
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = Math.max(canvas.parentElement.clientWidth - 36, 40);
+  const cssH = 220;
+  canvas.width = cssW*dpr; canvas.height = cssH*dpr;
+  canvas.style.width = cssW+"px"; canvas.style.height = cssH+"px";
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,cssW,cssH);
+
+  const styles = getComputedStyle(document.documentElement);
+  const accent = styles.getPropertyValue("--accent").trim() || "#C17A3F";
+  const textFaint = styles.getPropertyValue("--text-faint").trim() || "#888";
+  const textCol = styles.getPropertyValue("--text").trim() || "#eee";
+
+  if(data.length===0){
+    ctx.fillStyle = textFaint; ctx.font = "13px sans-serif"; ctx.textAlign="center";
+    ctx.fillText("Нет данных для графика", cssW/2, cssH/2);
+    return;
+  }
+  const max = Math.max(...data.map(d=>d.tips), 1);
+  const padLeft = 8, padRight = 8, padTop = 10, padBottom = 34;
+  const chartW = cssW - padLeft - padRight;
+  const chartH = cssH - padTop - padBottom;
+  const barGap = 14;
+  const barW = (chartW - barGap*(data.length-1)) / data.length;
+
+  data.forEach((d,i)=>{
+    const h = (d.tips/max) * chartH;
+    const x = padLeft + i*(barW+barGap);
+    const y = padTop + (chartH - h);
+    ctx.fillStyle = accent;
+    roundRectPath(ctx, x, y, barW, h, 6);
+    ctx.fill();
+    ctx.fillStyle = textCol;
+    ctx.font = "11px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(shortMoney(d.tips), x+barW/2, y-6 < 12 ? 12 : y-6);
+    ctx.fillStyle = textFaint;
+    ctx.font = "10.5px sans-serif";
+    const label = d.name.split(" ")[0];
+    ctx.fillText(label.length>10?label.slice(0,9)+"…":label, x+barW/2, cssH-16);
+  });
+}
+function roundRectPath(ctx,x,y,w,h,r){
+  if(h<=0) h=0.001;
+  r = Math.min(r, w/2, h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
+function shortMoney(n){
+  if(n>=1000) return Math.round(n/1000)+"k";
+  return String(Math.round(n));
+}
+
+/* =========================================================================
+   SETTINGS SCREEN
+========================================================================= */
+document.querySelectorAll("[data-theme-choice]").forEach(chip=>{
+  chip.addEventListener("click", async ()=>{
+    settings.theme = chip.dataset.themeChoice;
+    applyTheme();
+    await dbPut("settings", {key:"theme", value:settings.theme});
+    renderSettingsScreen();
+  });
+});
+function renderSettingsScreen(){
+  document.querySelectorAll("[data-theme-choice]").forEach(c=>c.classList.toggle("active", c.dataset.themeChoice===settings.theme));
+}
+function applyTheme(){
+  document.documentElement.setAttribute("data-theme", settings.theme);
+}
+
+document.getElementById("exportJsonBtn").addEventListener("click", ()=>{
+  const payload = {
+    exportedAt: nowISO(),
+    version: 1,
+    employees, calculations, settings
+  };
+  const blob = new Blob([JSON.stringify(payload,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const d = new Date();
+  const stamp = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  a.href = url; a.download = `tips-backup-${stamp}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  toast("Данные экспортированы ✓","success");
+});
+
+document.getElementById("importJsonBtn").addEventListener("click", ()=>{
+  document.getElementById("importFileInput").click();
+});
+document.getElementById("importFileInput").addEventListener("change",(e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    let parsed;
+    try{ parsed = JSON.parse(reader.result); }
+    catch(err){ toast("Файл повреждён или имеет неверный формат","error"); return; }
+    if(!parsed || !Array.isArray(parsed.employees) || !Array.isArray(parsed.calculations)){
+      toast("Файл повреждён: неверная структура данных","error"); return;
+    }
+    openModal(`
+      <div class="modal-head"><h3>Импорт данных</h3><button class="modal-close" id="mClose">✕</button></div>
+      <div class="alert warn">Найдено: сотрудников — ${parsed.employees.length}, расчётов — ${parsed.calculations.length}.</div>
+      <div class="stack">
+        <button class="btn btn-primary btn-block" id="mergeBtn">Объединить с существующими данными</button>
+        <button class="btn btn-danger btn-block" id="replaceBtn">Заменить существующие данные</button>
+        <button class="btn btn-ghost btn-block" id="cancelImportBtn">Отмена</button>
+      </div>
+    `);
+    document.getElementById("mClose").addEventListener("click", closeModal);
+    document.getElementById("cancelImportBtn").addEventListener("click", closeModal);
+    document.getElementById("mergeBtn").addEventListener("click", ()=>doImport(parsed,"merge"));
+    document.getElementById("replaceBtn").addEventListener("click", ()=>{
+      confirmDialog({
+        title:"Заменить все данные?",
+        message:"Текущие сотрудники и история будут полностью заменены импортируемыми данными.",
+        confirmWord:"УДАЛИТЬ",
+        onConfirm: ()=>doImport(parsed,"replace")
+      });
+    });
+  };
+  reader.readAsText(file);
+  e.target.value = "";
+});
+
+async function doImport(parsed, mode){
+  closeModal();
+  if(mode === "replace"){
+    await dbClear("employees"); await dbClear("calculations");
+    employees = []; calculations = [];
+  }
+  for(const emp of parsed.employees){
+    if(mode==="merge" && employees.some(e=>e.id===emp.id)) continue;
+    employees.push(emp);
+    await dbPut("employees", emp);
+  }
+  for(const c of parsed.calculations){
+    if(mode==="merge" && calculations.some(x=>x.id===c.id)) continue;
+    calculations.push(c);
+    await dbPut("calculations", c);
+  }
+  if(parsed.settings && parsed.settings.theme){
+    settings.theme = parsed.settings.theme;
+    applyTheme();
+    await dbPut("settings", {key:"theme", value:settings.theme});
+  }
+  renderEmployeesScreen(); renderHistoryScreen(); renderStatsScreen(); renderSettingsScreen();
+  toast("Данные импортированы ✓","success");
+}
+
+document.getElementById("exportCsvBtn").addEventListener("click", ()=>{
+  if(calculations.length===0){ toast("Нет данных для экспорта","error"); return; }
+  const header = ["Дата","Время","Общие чаевые","Заготовки %","Заготовки ₽","К распределению","Сотрудник","Процент","Часы","Доля %","Сумма"];
+  const lines = [header.join(";")];
+  calculations.forEach(c=>{
+    const d = new Date(c.date);
+    const dateStr = `${String(d.getDate()).padStart(2,"0")}.${String(d.getMonth()+1).padStart(2,"0")}.${d.getFullYear()}`;
+    const timeStr = `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+    const dedPct = c.deductionEnabled && c.deductionType==="percent" ? c.deductionValue : "";
+    c.employees.forEach(e=>{
+      lines.push([
+        dateStr, timeStr, c.totalTips, dedPct, c.deductionAmount, c.tipsToDistribute,
+        `"${e.name.replace(/"/g,'""')}"`, e.percentage||0, e.hours||0, (e.share*100).toFixed(2), e.amount
+      ].join(";"));
+    });
+  });
+  const csv = "\uFEFF" + lines.join("\r\n");
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const d = new Date();
+  const stamp = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  a.href = url; a.download = `tips-history-${stamp}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  toast("CSV экспортирован ✓","success");
+});
+
+document.getElementById("clearHistoryBtn").addEventListener("click", ()=>{
+  confirmDialog({
+    title:"Очистить всю историю?",
+    message:"Вы собираетесь удалить всю историю расчётов.",
+    confirmWord:"УДАЛИТЬ",
+    onConfirm: async ()=>{
+      await dbClear("calculations");
+      calculations = [];
+      renderHistoryScreen(); renderStatsScreen();
+      toast("История очищена");
+    }
+  });
+});
+document.getElementById("deleteAllEmpBtn").addEventListener("click", ()=>{
+  confirmDialog({
+    title:"Удалить всех сотрудников?",
+    message:"Вся база сотрудников будет удалена. Сохранённые расчёты не изменятся.",
+    confirmWord:"УДАЛИТЬ",
+    onConfirm: async ()=>{
+      await dbClear("employees");
+      employees = [];
+      renderEmployeesScreen();
+      toast("Все сотрудники удалены");
+    }
+  });
+});
+document.getElementById("fullResetBtn").addEventListener("click", ()=>{
+  confirmDialog({
+    title:"Полностью очистить приложение?",
+    message:"Будут удалены все сотрудники, все расчёты и настройки. Это действие необратимо.",
+    confirmWord:"УДАЛИТЬ",
+    onConfirm: async ()=>{
+      await dbClear("employees"); await dbClear("calculations"); await dbClear("settings");
+      employees = []; calculations = []; settings = {theme:"dark"};
+      calc = freshCalc(); editingCalcId = null;
+      applyTheme();
+      renderAll();
+      toast("Приложение полностью очищено");
+    }
+  });
+});
+
+/* =========================================================================
+   NAVIGATION
+========================================================================= */
+function switchScreen(name){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById("screen-"+name).classList.add("active");
+  document.querySelectorAll(".nav-btn").forEach(b=>b.classList.toggle("active", b.dataset.screen===name));
+  document.querySelectorAll(".side-btn").forEach(b=>b.classList.toggle("active", b.dataset.screen===name));
+  if(name==="stats") renderStatsScreen();
+  if(name==="history") renderHistoryScreen();
+  if(name==="employees") renderEmployeesScreen();
+  if(name==="settings") renderSettingsScreen();
+  window.scrollTo(0,0);
+}
+document.querySelectorAll(".nav-btn, .side-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>switchScreen(btn.dataset.screen));
+});
+
+/* =========================================================================
+   SEED DATA (first run only)
+========================================================================= */
+async function seedIfEmpty(){
+  if(employees.length > 0 || calculations.length > 0) return;
+  const iv = { id: uid(), name:"Иванов Иван Иванович", defaultPercentage:40, active:true, createdAt: nowISO(), updatedAt: nowISO() };
+  const pv = { id: uid(), name:"Петров Пётр Петрович", defaultPercentage:40, active:true, createdAt: nowISO(), updatedAt: nowISO() };
+  const sv = { id: uid(), name:"Сидоров Алексей Сергеевич", defaultPercentage:20, active:true, createdAt: nowISO(), updatedAt: nowISO() };
+  employees = [iv,pv,sv];
+  for(const e of employees) await dbPut("employees", e);
+
+  const testCalc = freshCalc();
+  testCalc.id = uid();
+  testCalc.date = nowISO();
+  testCalc.totalTips = 50000;
+  testCalc.deductionEnabled = true;
+  testCalc.deductionType = "percent";
+  testCalc.deductionValue = 10;
+  testCalc.mode = "percentHours";
+  testCalc.employees = [
+    {employeeId: iv.id, name: iv.name, percentage:40, hours:8, weight:0, share:0, amount:0},
+    {employeeId: pv.id, name: pv.name, percentage:40, hours:8, weight:0, share:0, amount:0},
+    {employeeId: sv.id, name: sv.name, percentage:20, hours:4, weight:0, share:0, amount:0}
+  ];
+  const savedCalcRef = calc;
+  calc = testCalc;
+  computeDeduction(); computeEmployeeShares();
+  testCalc.createdAt = nowISO(); testCalc.updatedAt = nowISO();
+  await dbPut("calculations", JSON.parse(JSON.stringify(testCalc)));
+  calculations.push(JSON.parse(JSON.stringify(testCalc)));
+  calc = savedCalcRef;
+}
+
+/* =========================================================================
+   INIT
+========================================================================= */
+function renderAll(){
+  recalcAll();
+  renderCalcScreen();
+  renderEmployeesScreen();
+  renderHistoryScreen();
+  renderStatsScreen();
+  renderSettingsScreen();
+}
+
+async function init(){
+  await openDB();
+  employees = await dbGetAll("employees");
+  calculations = await dbGetAll("calculations");
+  const themeRow = await dbGet("settings","theme");
+  settings.theme = themeRow ? themeRow.value : "dark";
+  applyTheme();
+
+  await seedIfEmpty();
+
+  renderAll();
+
+  window.addEventListener("resize", ()=>{ if(document.getElementById("screen-stats").classList.contains("active")) renderStatsScreen(); });
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>
