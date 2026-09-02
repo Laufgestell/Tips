@@ -1381,7 +1381,7 @@ function renderStatsScreen(){
 
   const table = document.getElementById("statsEmpTable");
   if(empStats.length===0){
-    table.parentElement.innerHTML = `<div class="empty-state" style="padding:14px;"><div class="msg">Нет данных за период</div></div>`;
+    table.innerHTML = `<tbody><tr><td colspan="6" style="text-align:center;color:var(--text-faint);padding:20px 8px;white-space:normal;">Нет данных за период</td></tr></tbody>`;
   } else {
     table.innerHTML = `
       <thead><tr><th>Сотрудник</th><th>Расчётов</th><th>Часы</th><th>Чаевые</th><th>Ср./смена</th><th>Ср./час</th></tr></thead>
