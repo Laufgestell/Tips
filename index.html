@@ -1771,7 +1771,7 @@ function downloadCalcCSV(c){
 }
 
 function downloadCalcImage(c){
-  const rowH = 40, headH = 210, footH = 30, pad = 28, width = 640;
+  const rowH = 54, headH = 210, footH = 30, pad = 28, width = 640;
   const height = headH + c.employees.length*rowH + footH + pad*2;
   const canvas = document.createElement("canvas");
   const dpr = window.devicePixelRatio || 1;
@@ -1811,22 +1811,34 @@ function downloadCalcImage(c){
   y += 40;
   ctx.strokeStyle = "#ddd"; ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(width-pad,y); ctx.stroke();
   y += 22;
+  const modeLabel = c.mode==="percent" ? "% РАСЧЁТА" : c.mode==="hours" ? "ЧАСЫ" : "% × ЧАСЫ";
   ctx.font = "600 12px sans-serif"; ctx.fillStyle = "#888";
   ctx.fillText("СОТРУДНИК", pad, y);
+  ctx.textAlign = "center";
+  ctx.fillText(modeLabel, width*0.62, y);
   ctx.textAlign = "right";
   ctx.fillText("СУММА", width-pad, y);
   ctx.textAlign = "left";
-  y += 14;
+  y += 16;
 
   c.employees.forEach(e=>{
     ctx.strokeStyle = "#eee"; ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(width-pad,y); ctx.stroke();
-    y += rowH*0.65;
+    y += rowH*0.42;
     ctx.font = "15px sans-serif"; ctx.fillStyle = "#222";
     ctx.fillText(e.name, pad, y);
-    ctx.textAlign = "right"; ctx.font="600 15px sans-serif";
+    ctx.textAlign = "right"; ctx.font="600 15px sans-serif"; ctx.fillStyle = "#222";
     ctx.fillText(formatMoney(e.amount), width-pad, y);
     ctx.textAlign = "left";
-    y += rowH*0.35;
+
+    y += 22;
+    ctx.font = "12.5px sans-serif"; ctx.fillStyle = "#999";
+    const detailParts = [];
+    if(c.mode !== "hours") detailParts.push(`${e.percentage||0}%`);
+    if(c.mode !== "percent") detailParts.push(`${e.hours||0} ч`);
+    detailParts.push(`доля ${(e.share*100).toFixed(1)}%`);
+    ctx.fillText(detailParts.join("  ·  "), pad, y);
+
+    y += rowH*0.36;
   });
 
   y += 10;
