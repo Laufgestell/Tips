@@ -474,6 +474,10 @@ canvas{width:100%;display:block;}
             <div class="chip" data-theme-choice="light">Светлая</div>
           </div>
         </div>
+        <div class="settings-row">
+          <div><div class="sr-title">Копейки в расчётах</div><div class="sr-sub">Суммы и доли — до сотых (например, 2 433,07 ₽)</div></div>
+          <div class="toggle" id="kopecksToggle"><div class="knob"></div></div>
+        </div>
       </div>
 
       <div class="section-title">Управление данными</div>
@@ -518,7 +522,7 @@ canvas{width:100%;display:block;}
    INDEXEDDB LAYER
 ========================================================================= */
 const DB_NAME = "TipsCalcDB";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 let db = null;
 
 function openDB(){
@@ -536,6 +540,10 @@ function openDB(){
       }
       if(!_db.objectStoreNames.contains("settings")){
         _db.createObjectStore("settings", {keyPath:"key"});
+      }
+      if(!_db.objectStoreNames.contains("schedules")){
+        const s = _db.createObjectStore("schedules", {keyPath:"id"});
+        s.createIndex("importedAt", "importedAt", {unique:false});
       }
     };
     req.onsuccess = (e)=>{ db = e.target.result; resolve(db); };
@@ -584,7 +592,7 @@ function dbGet(store, key){
 ========================================================================= */
 let employees = [];      // {id,name,active,createdAt,updatedAt}
 let calculations = [];   // saved calculations
-let settings = { theme:"dark" };
+let settings = { theme:"dark", allowKopecks:false };
 
 let calc = freshCalc();
 let editingCalcId = null; // if editing a saved calculation from history
@@ -612,14 +620,21 @@ function nowISO(){ return new Date().toISOString(); }
 /* =========================================================================
    FORMATTING HELPERS
 ========================================================================= */
+function moneyPrecision(){ return settings.allowKopecks ? 2 : 0; }
+function roundToPrecision(n, prec){
+  const mult = Math.pow(10, prec==null?moneyPrecision():prec);
+  return Math.round((n||0) * mult) / mult;
+}
 function formatMoney(n){
-  n = Math.round(n||0);
-  return n.toLocaleString("ru-RU") + " ₽";
+  const prec = moneyPrecision();
+  n = roundToPrecision(n, prec);
+  return n.toLocaleString("ru-RU", {minimumFractionDigits:prec, maximumFractionDigits:prec}) + " ₽";
 }
 function formatMoneySigned(n){
-  n = Math.round(n||0);
+  const prec = moneyPrecision();
+  n = roundToPrecision(n, prec);
   const sign = n < 0 ? "−" : "";
-  return sign + Math.abs(n).toLocaleString("ru-RU") + " ₽";
+  return sign + Math.abs(n).toLocaleString("ru-RU", {minimumFractionDigits:prec, maximumFractionDigits:prec}) + " ₽";
 }
 function parseNumberInput(str){
   if(typeof str !== "string") return Number(str)||0;
@@ -628,9 +643,10 @@ function parseNumberInput(str){
   return isNaN(n) ? 0 : n;
 }
 function formatInputNumber(n){
-  n = Math.round(n||0);
+  const prec = moneyPrecision();
+  n = roundToPrecision(n, prec);
   if(n === 0) return "";
-  return n.toLocaleString("ru-RU");
+  return n.toLocaleString("ru-RU", {minimumFractionDigits:prec, maximumFractionDigits:prec});
 }
 function formatDateHuman(iso){
   const d = new Date(iso);
@@ -661,9 +677,11 @@ function toast(msg, type){
 
 /* =========================================================================
    ROUNDING — largest remainder method, exact sum guaranteed
+   precision: 0 = whole rubles, 2 = kopecks (hundredths)
 ========================================================================= */
-function distributeRounded(total, shares){
-  total = Math.round(total);
+function distributeRounded(total, shares, precision){
+  const mult = Math.pow(10, precision||0);
+  total = Math.round(total*mult); // work in smallest units to avoid float drift
   if(shares.length === 0) return [];
   const shareSum = shares.reduce((a,b)=>a+b,0);
   const norm = shareSum > 0 ? shares.map(s=>s/shareSum) : shares.map(()=>1/shares.length);
@@ -678,7 +696,7 @@ function distributeRounded(total, shares){
     remainder--;
     k++;
   }
-  return floors;
+  return floors.map(f=>f/mult);
 }
 
 /* =========================================================================
@@ -686,15 +704,16 @@ function distributeRounded(total, shares){
 ========================================================================= */
 function computeDeduction(){
   const total = calc.totalTips;
+  const prec = moneyPrecision();
   if(!calc.deductionEnabled){
     calc.deductionAmount = 0;
   } else if(calc.deductionType === "percent"){
     const pct = clamp(calc.deductionValue, 0, 100);
-    calc.deductionAmount = Math.round(total * pct / 100);
+    calc.deductionAmount = roundToPrecision(total * pct / 100, prec);
   } else {
-    calc.deductionAmount = clamp(calc.deductionValue, 0, total);
+    calc.deductionAmount = roundToPrecision(clamp(calc.deductionValue, 0, total), prec);
   }
-  calc.tipsToDistribute = Math.max(0, total - calc.deductionAmount);
+  calc.tipsToDistribute = Math.max(0, roundToPrecision(total - calc.deductionAmount, prec));
 }
 function clamp(n,min,max){ return Math.min(max, Math.max(min, n)); }
 
@@ -715,11 +734,12 @@ function computeEmployeeShares(){
   emps.forEach((e,i)=> e.weight = weights[i]);
 
   const weightSum = weights.reduce((a,b)=>a+b,0);
-  const rounded = weightSum > 0 ? distributeRounded(total, weights) : emps.map(()=>0);
+  const rounded = weightSum > 0 ? distributeRounded(total, weights, moneyPrecision()) : emps.map(()=>0);
 
   emps.forEach((e,i)=>{
     e.share = weightSum > 0 ? weights[i]/weightSum : 0;
-    e.amount = rounded[i] || 0;
+    e.exactAmount = rounded[i] || 0;
+    e.amount = e.exactAmount;
   });
 }
 
@@ -761,6 +781,8 @@ function round2(n){ return Math.round(n*100)/100; }
    RENDER: CALC SCREEN
 ========================================================================= */
 function renderCalcScreen(){
+  const numInputMode = settings.allowKopecks ? "decimal" : "numeric";
+  document.getElementById("totalTipsInput").setAttribute("inputmode", numInputMode);
   document.getElementById("totalTipsInput").value = formatInputNumber(calc.totalTips);
 
   const toggle = document.getElementById("deductionToggle");
@@ -768,6 +790,7 @@ function renderCalcScreen(){
   document.getElementById("deductionOptions").style.display = calc.deductionEnabled ? "block" : "none";
   document.querySelectorAll("[data-dtype]").forEach(c=>c.classList.toggle("active", c.dataset.dtype===calc.deductionType));
   document.getElementById("deductionValueLabel").textContent = calc.deductionType==="percent" ? "Процент заготовок" : "Сумма заготовок, ₽";
+  document.getElementById("deductionValueInput").setAttribute("inputmode", calc.deductionType==="percent" ? "decimal" : numInputMode);
   document.getElementById("deductionValueInput").value = calc.deductionValue ? (calc.deductionType==="percent" ? calc.deductionValue : formatInputNumber(calc.deductionValue)) : "";
 
   document.querySelectorAll("[data-mode]").forEach(c=>c.classList.toggle("active", c.dataset.mode===calc.mode));
@@ -815,6 +838,12 @@ function renderEmpRows(){
         <div class="mini-field"><label>Часы</label><input class="mini-input" type="number" inputmode="decimal" data-field="hours" data-idx="${idx}" value="${e.hours||""}"></div>
       </div>`;
     }
+    const linkedEmp = e.employeeId ? employees.find(x=>x.id===e.employeeId) : null;
+    const reqHtml = linkedEmp && linkedEmp.paymentMethod && linkedEmp.paymentMethod!=="none" ? `
+      <div class="row" style="margin-top:4px;">
+        ${requisitesInlineHtml(linkedEmp, true)}
+        <button class="btn btn-sm btn-ghost" data-copy-req="${idx}">📋 Скопировать</button>
+      </div>` : "";
     row.innerHTML = `
       <div class="emp-head">
         <div class="emp-name">${escapeHtml(e.name)}</div>
@@ -825,6 +854,7 @@ function renderEmpRows(){
         <span>Доля: ${(e.share*100).toFixed(2)}%</span>
         <b class="num">${formatMoney(e.amount)}</b>
       </div>
+      ${reqHtml}
     `;
     container.appendChild(row);
   });
@@ -939,6 +969,11 @@ document.getElementById("empRowsContainer").addEventListener("click",(e)=>{
     recalcAll();
     renderEmpRows();
     renderCalcAlerts();
+  } else if(e.target.dataset.copyReq !== undefined){
+    const idx = parseInt(e.target.dataset.copyReq,10);
+    const row = calc.employees[idx];
+    const linkedEmp = row.employeeId ? employees.find(x=>x.id===row.employeeId) : null;
+    if(linkedEmp) copyText(buildRequisitesText(linkedEmp));
   }
 });
 
@@ -1012,7 +1047,7 @@ function openQuickAddModal(){
   const confirmAdd = async ()=>{
     const name = document.getElementById("quickAddName").value.trim();
     if(!name){ toast("Введите ФИО","error"); return; }
-    const emp = { id: uid(), name, defaultPercentage:0, active:true, createdAt: nowISO(), updatedAt: nowISO() };
+    const emp = { id: uid(), name, defaultPercentage:0, active:true, paymentMethod:"none", paymentBank:"", paymentPhone:"", paymentCard:"", createdAt: nowISO(), updatedAt: nowISO() };
     employees.push(emp);
     await dbPut("employees", emp);
     addEmployeeToCalc(emp);
@@ -1092,8 +1127,10 @@ function renderEmployeesScreen(){
       <div>
         <div class="eli-name">${escapeHtml(e.name)}</div>
         ${e.defaultPercentage ? `<div style="font-size:11.5px;color:var(--text-faint);">Процент по умолчанию: ${e.defaultPercentage}%</div>` : ""}
+        ${requisitesInlineHtml(e, true)}
       </div>
       <div class="eli-actions">
+        ${e.paymentMethod && e.paymentMethod!=="none" ? `<button class="btn btn-sm btn-ghost" data-copy="${e.id}">📋</button>` : ""}
         <button class="btn btn-sm btn-ghost" data-edit="${e.id}">✎</button>
         <button class="btn btn-sm btn-ghost" data-toggle="${e.id}">${e.active?"Отключить":"Включить"}</button>
         <button class="btn btn-sm btn-danger" data-del="${e.id}">✕</button>
@@ -1104,6 +1141,11 @@ function renderEmployeesScreen(){
 document.getElementById("empSearchInput").addEventListener("input", renderEmployeesScreen);
 
 document.getElementById("employeesList").addEventListener("click", async (e)=>{
+  if(e.target.dataset.copy){
+    const emp = employees.find(x=>x.id===e.target.dataset.copy);
+    copyText(buildRequisitesText(emp));
+    return;
+  }
   const t = e.target;
   if(t.dataset.edit){
     const emp = employees.find(x=>x.id===t.dataset.edit);
@@ -1132,8 +1174,13 @@ document.getElementById("employeesList").addEventListener("click", async (e)=>{
 
 document.getElementById("addEmployeeBtn").addEventListener("click", ()=>openEditEmployeeModal(null));
 
+const BANK_OPTIONS = ["Сбербанк","Т-Банк","Альфа-Банк","ВТБ","Райффайзен","Другой"];
+
 function openEditEmployeeModal(emp){
   const isEdit = !!emp;
+  const pm = (isEdit && emp.paymentMethod) || "none";
+  const bank = (isEdit && emp.paymentBank) || "";
+  const isCustomBank = bank && !BANK_OPTIONS.slice(0,-1).includes(bank);
   openModal(`
     <div class="modal-head"><h3>${isEdit?"Редактировать":"Новый сотрудник"}</h3><button class="modal-close" id="mClose">✕</button></div>
     <label class="field-label">ФИО</label>
@@ -1141,19 +1188,68 @@ function openEditEmployeeModal(emp){
     <label class="field-label" style="margin-top:12px;">Процент по умолчанию, %</label>
     <input class="input" id="empPercentInput" type="number" inputmode="decimal" value="${isEdit && emp.defaultPercentage ? emp.defaultPercentage : ""}" placeholder="Необязательно">
     <div style="font-size:12px;color:var(--text-faint);margin-top:6px;">Подставляется автоматически при добавлении сотрудника в расчёт и обновляется, когда вы меняете его процент внутри расчёта.</div>
+
+    <div class="section-title" style="margin-top:18px;">💳 Реквизиты для выплаты</div>
+    <div class="chip-group" id="pmChoice" style="margin-bottom:10px;">
+      <div class="chip ${pm==='none'?'active':''}" data-pm="none">Не указан</div>
+      <div class="chip ${pm==='sbp'?'active':''}" data-pm="sbp">СБП</div>
+      <div class="chip ${pm==='card'?'active':''}" data-pm="card">Карта</div>
+    </div>
+    <div id="pmFields">
+      <div id="pmSbpFields" style="display:${pm==='sbp'?'block':'none'};">
+        <label class="field-label">Номер телефона</label>
+        <input class="input" id="empPhoneInput" value="${isEdit?escapeHtml(emp.paymentPhone||""):""}" placeholder="+7 XXX XXX XX XX">
+        <label class="field-label" style="margin-top:10px;">Банк</label>
+        <select class="input" id="empBankSelect">
+          ${BANK_OPTIONS.map(b=>`<option value="${b}" ${bank===b || (b==='Другой' && isCustomBank) ?'selected':''}>${b}</option>`).join("")}
+        </select>
+        <input class="input" id="empBankCustomInput" style="margin-top:8px;display:${isCustomBank?'block':'none'};" value="${isCustomBank?escapeHtml(bank):""}" placeholder="Название банка">
+      </div>
+      <div id="pmCardFields" style="display:${pm==='card'?'block':'none'};">
+        <label class="field-label">Номер карты</label>
+        <input class="input" id="empCardInput" inputmode="numeric" value="${isEdit?escapeHtml(emp.paymentCard||""):""}" placeholder="0000 0000 0000 0000">
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--text-faint);margin-top:6px;">Реквизиты хранятся только на этом устройстве и никуда не отправляются.</div>
+
     <button class="btn btn-primary btn-block" style="margin-top:14px;" id="empSaveBtn">${isEdit?"Сохранить":"Добавить"}</button>
   `);
   document.getElementById("mClose").addEventListener("click", closeModal);
+
+  document.getElementById("pmChoice").addEventListener("click",(e)=>{
+    if(!e.target.dataset.pm) return;
+    document.querySelectorAll("#pmChoice .chip").forEach(c=>c.classList.remove("active"));
+    e.target.classList.add("active");
+    document.getElementById("pmSbpFields").style.display = e.target.dataset.pm==="sbp"?"block":"none";
+    document.getElementById("pmCardFields").style.display = e.target.dataset.pm==="card"?"block":"none";
+  });
+  const bankSelect = document.getElementById("empBankSelect");
+  if(bankSelect){
+    bankSelect.addEventListener("change",()=>{
+      document.getElementById("empBankCustomInput").style.display = bankSelect.value==="Другой" ? "block" : "none";
+    });
+  }
+
   document.getElementById("empSaveBtn").addEventListener("click", async ()=>{
     const name = document.getElementById("empNameInput").value.trim();
     if(!name){ toast("Введите ФИО","error"); return; }
     const pct = parseNumberInput(document.getElementById("empPercentInput").value);
+    const activePm = document.querySelector("#pmChoice .chip.active").dataset.pm;
+    const paymentData = { paymentMethod: activePm, paymentBank:"", paymentPhone:"", paymentCard:"" };
+    if(activePm === "sbp"){
+      paymentData.paymentPhone = document.getElementById("empPhoneInput").value.trim();
+      const bankSel = document.getElementById("empBankSelect").value;
+      paymentData.paymentBank = bankSel==="Другой" ? document.getElementById("empBankCustomInput").value.trim() : bankSel;
+    } else if(activePm === "card"){
+      paymentData.paymentCard = document.getElementById("empCardInput").value.replace(/\s+/g,"");
+    }
     if(isEdit){
       emp.name = name; emp.defaultPercentage = pct || 0; emp.updatedAt = nowISO();
+      Object.assign(emp, paymentData);
       await dbPut("employees", emp);
       toast("Изменения сохранены ✓","success");
     } else {
-      const newEmp = { id: uid(), name, defaultPercentage: pct || 0, active:true, createdAt: nowISO(), updatedAt: nowISO() };
+      const newEmp = { id: uid(), name, defaultPercentage: pct || 0, active:true, createdAt: nowISO(), updatedAt: nowISO(), ...paymentData };
       employees.push(newEmp);
       await dbPut("employees", newEmp);
       toast("Сотрудник добавлен ✓","success");
@@ -1161,6 +1257,53 @@ function openEditEmployeeModal(emp){
     closeModal();
     renderEmployeesScreen();
   });
+}
+
+/* =========================================================================
+   PAYMENT REQUISITES — masking, copy, display
+========================================================================= */
+function maskCard(num){
+  const digits = (num||"").replace(/\D/g,"");
+  if(digits.length < 4) return "•••• ••••";
+  return "•••• " + digits.slice(-4);
+}
+function formatCardFull(num){
+  const digits = (num||"").replace(/\D/g,"");
+  return digits.replace(/(.{4})/g,"$1 ").trim();
+}
+async function copyText(text, successMsg){
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.style.position="fixed"; ta.style.opacity="0";
+      document.body.appendChild(ta); ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }
+    toast(successMsg || "Реквизиты скопированы ✓","success");
+  } catch(err){
+    toast("Не удалось скопировать","error");
+  }
+}
+function buildRequisitesText(emp){
+  if(!emp || emp.paymentMethod === "sbp"){
+    if(emp && emp.paymentMethod === "sbp"){
+      return `СБП\nБанк: ${emp.paymentBank||"—"}\nТелефон: ${emp.paymentPhone||"—"}`;
+    }
+  }
+  if(emp && emp.paymentMethod === "card"){
+    return `Банковская карта\nНомер карты: ${formatCardFull(emp.paymentCard||"")}`;
+  }
+  return "";
+}
+function requisitesInlineHtml(emp, compact){
+  if(!emp || !emp.paymentMethod || emp.paymentMethod === "none") return "";
+  if(emp.paymentMethod === "sbp"){
+    return `<div style="font-size:${compact?"12px":"12.5px"};color:var(--text-dim);margin-top:4px;">СБП · ${escapeHtml(emp.paymentBank||"—")}<br>${escapeHtml(emp.paymentPhone||"—")}</div>`;
+  }
+  return `<div style="font-size:${compact?"12px":"12.5px"};color:var(--text-dim);margin-top:4px;">Банковская карта<br>${maskCard(emp.paymentCard)}</div>`;
 }
 
 /* =========================================================================
@@ -1258,6 +1401,23 @@ document.getElementById("historyList").addEventListener("click",(e)=>{
   if(item) openHistoryDetail(item.dataset.open);
 });
 
+function payoutCardsHtml(c){
+  const withPay = c.employees.filter(e=>{
+    const emp = e.employeeId ? employees.find(x=>x.id===e.employeeId) : null;
+    return emp && emp.paymentMethod && emp.paymentMethod!=="none";
+  });
+  if(withPay.length===0) return "";
+  const cards = withPay.map(e=>{
+    const emp = employees.find(x=>x.id===e.employeeId);
+    return `<div class="emp-row" style="margin-bottom:8px;">
+      <div class="emp-head"><div class="emp-name">${escapeHtml(e.name)}</div><b class="num">${formatMoney(e.amount)}</b></div>
+      ${requisitesInlineHtml(emp, false)}
+      <button class="btn btn-sm btn-ghost" style="margin-top:8px;" data-copy-payout="${emp.id}">📋 Скопировать</button>
+    </div>`;
+  }).join("");
+  return `<div class="section-title">Выплаты</div>${cards}`;
+}
+
 function openHistoryDetail(id){
   const c = calculations.find(x=>x.id===id);
   if(!c) return;
@@ -1281,12 +1441,19 @@ function openHistoryDetail(id){
       <thead><tr><th>Сотрудник</th>${c.mode!=="hours"?"<th>%</th>":""}${c.mode!=="percent"?"<th>Часы</th>":""}<th>Доля</th><th>Сумма</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
+    ${payoutCardsHtml(c)}
     <div style="display:flex;gap:8px;margin-top:16px;">
       <button class="btn btn-ghost" style="flex:1;" id="editHistBtn">Редактировать</button>
       <button class="btn btn-danger" style="flex:1;" id="delHistBtn">Удалить</button>
     </div>
   `);
   document.getElementById("mClose").addEventListener("click", closeModal);
+  document.querySelectorAll("[data-copy-payout]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const emp = employees.find(x=>x.id===btn.dataset.copyPayout);
+      if(emp) copyText(buildRequisitesText(emp));
+    });
+  });
   document.getElementById("editHistBtn").addEventListener("click", ()=>{
     calc = JSON.parse(JSON.stringify(c));
     editingCalcId = c.id;
@@ -1469,8 +1636,18 @@ document.querySelectorAll("[data-theme-choice]").forEach(chip=>{
     renderSettingsScreen();
   });
 });
+document.getElementById("kopecksToggle").addEventListener("click", async ()=>{
+  settings.allowKopecks = !settings.allowKopecks;
+  await dbPut("settings", {key:"allowKopecks", value:settings.allowKopecks});
+  recalcAll();
+  renderCalcScreen();
+  renderSettingsScreen();
+  renderHistoryScreen();
+  renderStatsScreen();
+});
 function renderSettingsScreen(){
   document.querySelectorAll("[data-theme-choice]").forEach(c=>c.classList.toggle("active", c.dataset.themeChoice===settings.theme));
+  document.getElementById("kopecksToggle").classList.toggle("on", !!settings.allowKopecks);
 }
 function applyTheme(){
   document.documentElement.setAttribute("data-theme", settings.theme);
@@ -1553,6 +1730,10 @@ async function doImport(parsed, mode){
     applyTheme();
     await dbPut("settings", {key:"theme", value:settings.theme});
   }
+  if(parsed.settings && typeof parsed.settings.allowKopecks === "boolean"){
+    settings.allowKopecks = parsed.settings.allowKopecks;
+    await dbPut("settings", {key:"allowKopecks", value:settings.allowKopecks});
+  }
   renderEmployeesScreen(); renderHistoryScreen(); renderStatsScreen(); renderSettingsScreen();
   toast("Данные импортированы ✓","success");
 }
@@ -1618,7 +1799,7 @@ document.getElementById("fullResetBtn").addEventListener("click", ()=>{
     confirmWord:"УДАЛИТЬ",
     onConfirm: async ()=>{
       await dbClear("employees"); await dbClear("calculations"); await dbClear("settings");
-      employees = []; calculations = []; settings = {theme:"dark"};
+      employees = []; calculations = []; settings = {theme:"dark", allowKopecks:false};
       calc = freshCalc(); editingCalcId = null;
       applyTheme();
       renderAll();
@@ -1697,6 +1878,8 @@ async function init(){
   const themeRow = await dbGet("settings","theme");
   settings.theme = themeRow ? themeRow.value : "dark";
   applyTheme();
+  const kopecksRow = await dbGet("settings","allowKopecks");
+  settings.allowKopecks = kopecksRow ? !!kopecksRow.value : false;
 
   await seedIfEmpty();
 
