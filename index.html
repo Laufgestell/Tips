@@ -334,7 +334,7 @@ canvas{width:100%;display:block;}
       <div class="card">
         <div class="row" style="margin-bottom:2px;">
           <div>
-            <div class="card-title" style="margin-bottom:2px;">Заготовки</div>
+            <div class="card-title" style="margin-bottom:2px;">Заготовщик</div>
             <div class="sr-sub" style="color:var(--text-faint);font-size:12px;">Вычесть перед распределением</div>
           </div>
           <div class="toggle" id="deductionToggle"><div class="knob"></div></div>
@@ -344,7 +344,7 @@ canvas{width:100%;display:block;}
             <div class="chip active" data-dtype="percent">Процент</div>
             <div class="chip" data-dtype="fixed">Фиксированная сумма</div>
           </div>
-          <label class="field-label" id="deductionValueLabel">Процент заготовок</label>
+          <label class="field-label" id="deductionValueLabel">Процент заготовщику</label>
           <input class="input" inputmode="numeric" id="deductionValueInput" placeholder="0">
         </div>
       </div>
@@ -354,7 +354,7 @@ canvas{width:100%;display:block;}
           <div class="flow-step"><span class="lbl">Общие чаевые</span><span class="val num" id="flowTotal">0 ₽</span></div>
           <div class="flow-arrow" id="flowArrow1" style="display:none;">↓</div>
           <div class="flow-step" id="flowDeductionRow" style="display:none;">
-            <span class="lbl">Заготовки <span class="pill" id="flowDeductionPct"></span></span>
+            <span class="lbl">Заготовщик <span class="pill" id="flowDeductionPct"></span></span>
             <span class="val neg num" id="flowDeduction">−0 ₽</span>
           </div>
           <div class="flow-arrow" id="flowArrow2" style="display:none;">↓</div>
@@ -452,7 +452,7 @@ canvas{width:100%;display:block;}
       <div class="section-title">Общие показатели</div>
       <div class="stat-grid" id="statsOverview"></div>
 
-      <div class="section-title">Заготовки за период</div>
+      <div class="section-title">Заготовщику за период</div>
       <div class="card" id="statsDeductionsCard"></div>
 
       <div class="section-title">Чаевые сотрудников</div>
@@ -755,8 +755,8 @@ function getValidationIssues(){
   const issues = [];
   if(calc.totalTips <= 0) issues.push("Введите сумму чаевых");
   if(calc.deductionEnabled){
-    if(calc.deductionType === "percent" && (calc.deductionValue < 0 || calc.deductionValue > 100)) issues.push("Процент заготовок должен быть от 0 до 100");
-    if(calc.deductionType === "fixed" && (calc.deductionValue < 0 || calc.deductionValue > calc.totalTips)) issues.push("Сумма заготовок не может превышать общую сумму чаевых");
+    if(calc.deductionType === "percent" && (calc.deductionValue < 0 || calc.deductionValue > 100)) issues.push("Процент заготовщика должен быть от 0 до 100");
+    if(calc.deductionType === "fixed" && (calc.deductionValue < 0 || calc.deductionValue > calc.totalTips)) issues.push("Сумма заготовщика не может превышать общую сумму чаевых");
   }
   if(calc.employees.length === 0) issues.push("Добавьте хотя бы одного сотрудника");
   calc.employees.forEach(e=>{
@@ -789,7 +789,7 @@ function renderCalcScreen(){
   toggle.classList.toggle("on", calc.deductionEnabled);
   document.getElementById("deductionOptions").style.display = calc.deductionEnabled ? "block" : "none";
   document.querySelectorAll("[data-dtype]").forEach(c=>c.classList.toggle("active", c.dataset.dtype===calc.deductionType));
-  document.getElementById("deductionValueLabel").textContent = calc.deductionType==="percent" ? "Процент заготовок" : "Сумма заготовок, ₽";
+  document.getElementById("deductionValueLabel").textContent = calc.deductionType==="percent" ? "Процент заготовщику" : "Сумма заготовщику, ₽";
   document.getElementById("deductionValueInput").setAttribute("inputmode", calc.deductionType==="percent" ? "decimal" : numInputMode);
   document.getElementById("deductionValueInput").value = calc.deductionValue ? (calc.deductionType==="percent" ? calc.deductionValue : formatInputNumber(calc.deductionValue)) : "";
 
@@ -1379,7 +1379,7 @@ function renderHistoryScreen(){
     <div class="hist-item" data-open="${c.id}">
       <div class="hi-top"><span class="hi-date">${formatDateHuman(c.date)}</span><span class="hi-total num">${formatMoney(c.totalTips)}</span></div>
       <div class="hi-meta">
-        <span>${c.deductionEnabled ? "Заготовки: "+formatMoney(c.deductionAmount) : "Без заготовок"}</span>
+        <span>${c.deductionEnabled ? "Заготовщик: "+formatMoney(c.deductionAmount) : "Без заготовщика"}</span>
         <span>К распределению: ${formatMoney(c.tipsToDistribute)}</span>
         <span>Сотрудников: ${c.employees.length}</span>
       </div>
@@ -1433,7 +1433,7 @@ function openHistoryDetail(id){
     <div class="modal-head"><h3>${formatDateHuman(c.date)}</h3><button class="modal-close" id="mClose">✕</button></div>
     <div class="flow">
       <div class="flow-step"><span class="lbl">Общие чаевые</span><span class="val num">${formatMoney(c.totalTips)}</span></div>
-      ${c.deductionEnabled ? `<div class="flow-step"><span class="lbl">Заготовки</span><span class="val neg num">${formatMoneySigned(-c.deductionAmount)}</span></div>`:""}
+      ${c.deductionEnabled ? `<div class="flow-step"><span class="lbl">Заготовщик</span><span class="val neg num">${formatMoneySigned(-c.deductionAmount)}</span></div>`:""}
       <div class="flow-final"><span class="lbl">К распределению</span><span class="val num">${formatMoney(c.tipsToDistribute)}</span></div>
     </div>
     <div class="pill" style="margin:12px 0;">${modeLabel}</div>
@@ -1443,11 +1443,17 @@ function openHistoryDetail(id){
     </table></div>
     ${payoutCardsHtml(c)}
     <div style="display:flex;gap:8px;margin-top:16px;">
+      <button class="btn btn-ghost" style="flex:1;" id="downloadCsvBtn">📊 Таблица</button>
+      <button class="btn btn-ghost" style="flex:1;" id="downloadImgBtn">🖼️ Картинка</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px;">
       <button class="btn btn-ghost" style="flex:1;" id="editHistBtn">Редактировать</button>
       <button class="btn btn-danger" style="flex:1;" id="delHistBtn">Удалить</button>
     </div>
   `);
   document.getElementById("mClose").addEventListener("click", closeModal);
+  document.getElementById("downloadCsvBtn").addEventListener("click", ()=>downloadCalcCSV(c));
+  document.getElementById("downloadImgBtn").addEventListener("click", ()=>downloadCalcImage(c));
   document.querySelectorAll("[data-copy-payout]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       const emp = employees.find(x=>x.id===btn.dataset.copyPayout);
@@ -1515,7 +1521,7 @@ function renderStatsScreen(){
 
   document.getElementById("statsOverview").innerHTML = `
     <div class="stat-box"><div class="sv num">${formatMoney(totalTips)}</div><div class="sl">Всего чаевых</div></div>
-    <div class="stat-box"><div class="sv num">${formatMoney(totalDeducted)}</div><div class="sl">Удержано на заготовки</div></div>
+    <div class="stat-box"><div class="sv num">${formatMoney(totalDeducted)}</div><div class="sl">Удержано заготовщику</div></div>
     <div class="stat-box"><div class="sv num">${formatMoney(totalDistributed)}</div><div class="sl">Распределено сотрудникам</div></div>
     <div class="stat-box"><div class="sv num">${count}</div><div class="sl">Расчётов</div></div>
     <div class="stat-box"><div class="sv num">${round2(totalHours)}</div><div class="sl">Отработано часов</div></div>
@@ -1527,10 +1533,10 @@ function renderStatsScreen(){
   document.getElementById("statsDeductionsCard").innerHTML = totalTips === 0 ? `<div class="empty-state" style="padding:14px;"><div class="msg">Нет данных за период</div></div>` : `
     <div class="flow">
       <div class="flow-step"><span class="lbl">Общие чаевые</span><span class="val num">${formatMoney(totalTips)}</span></div>
-      <div class="flow-step"><span class="lbl">Заготовки</span><span class="val neg num">${formatMoneySigned(-totalDeducted)}</span></div>
+      <div class="flow-step"><span class="lbl">Заготовщик</span><span class="val neg num">${formatMoneySigned(-totalDeducted)}</span></div>
       <div class="flow-final"><span class="lbl">К распределению</span><span class="val num">${formatMoney(totalDistributed)}</span></div>
     </div>
-    <div style="margin-top:8px;font-size:12.5px;color:var(--text-faint);">Средний процент заготовок: ${round2(avgPctVal)}%</div>
+    <div style="margin-top:8px;font-size:12.5px;color:var(--text-faint);">Средний процент заготовщику: ${round2(avgPctVal)}%</div>
   `;
 
   // per-employee aggregation
@@ -1738,22 +1744,107 @@ async function doImport(parsed, mode){
   toast("Данные импортированы ✓","success");
 }
 
+function calcToCSVRows(c){
+  const d = new Date(c.date);
+  const dateStr = `${String(d.getDate()).padStart(2,"0")}.${String(d.getMonth()+1).padStart(2,"0")}.${d.getFullYear()}`;
+  const timeStr = `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+  const dedPct = c.deductionEnabled && c.deductionType==="percent" ? c.deductionValue : "";
+  return c.employees.map(e=>[
+    dateStr, timeStr, c.totalTips, dedPct, c.deductionAmount, c.tipsToDistribute,
+    `"${e.name.replace(/"/g,'""')}"`, e.percentage||0, e.hours||0, (e.share*100).toFixed(2), e.amount
+  ].join(";"));
+}
+function downloadBlob(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+function downloadCalcCSV(c){
+  const header = ["Дата","Время","Общие чаевые","Заготовщик %","Заготовщик ₽","К распределению","Сотрудник","Процент","Часы","Доля %","Сумма"];
+  const csv = "\uFEFF" + [header.join(";"), ...calcToCSVRows(c)].join("\r\n");
+  const d = new Date(c.date);
+  const stamp = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  downloadBlob(new Blob([csv], {type:"text/csv;charset=utf-8;"}), `tips-calc-${stamp}.csv`);
+  toast("Таблица скачана ✓","success");
+}
+
+function downloadCalcImage(c){
+  const rowH = 40, headH = 210, footH = 30, pad = 28, width = 640;
+  const height = headH + c.employees.length*rowH + footH + pad*2;
+  const canvas = document.createElement("canvas");
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = width*dpr; canvas.height = height*dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,width,height);
+  ctx.fillStyle = "#1a1a1a"; ctx.font = "600 20px Georgia, serif";
+  ctx.fillText("Alaska Bar — расчёт чаевых", pad, pad+22);
+  ctx.fillStyle = "#888"; ctx.font = "13px sans-serif";
+  ctx.fillText(formatDateHuman(c.date), pad, pad+44);
+
+  let y = pad + 78;
+  ctx.font = "13px sans-serif"; ctx.fillStyle = "#555";
+  ctx.fillText("Общие чаевые", pad, y);
+  ctx.textAlign = "right"; ctx.fillStyle="#111"; ctx.font="600 15px sans-serif";
+  ctx.fillText(formatMoney(c.totalTips), width-pad, y);
+  ctx.textAlign = "left";
+
+  if(c.deductionEnabled){
+    y += 26;
+    ctx.font = "13px sans-serif"; ctx.fillStyle = "#555";
+    ctx.fillText("Заготовщик", pad, y);
+    ctx.textAlign = "right"; ctx.fillStyle="#b0453a"; ctx.font="600 15px sans-serif";
+    ctx.fillText("−"+formatMoney(c.deductionAmount), width-pad, y);
+    ctx.textAlign = "left";
+  }
+  y += 32;
+  ctx.fillStyle = "#f2ead9"; ctx.fillRect(pad-10, y-22, width-2*(pad-10), 34);
+  ctx.font = "700 16px sans-serif"; ctx.fillStyle = "#8f4f22";
+  ctx.fillText("К распределению", pad, y);
+  ctx.textAlign = "right";
+  ctx.fillText(formatMoney(c.tipsToDistribute), width-pad, y);
+  ctx.textAlign = "left";
+
+  y += 40;
+  ctx.strokeStyle = "#ddd"; ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(width-pad,y); ctx.stroke();
+  y += 22;
+  ctx.font = "600 12px sans-serif"; ctx.fillStyle = "#888";
+  ctx.fillText("СОТРУДНИК", pad, y);
+  ctx.textAlign = "right";
+  ctx.fillText("СУММА", width-pad, y);
+  ctx.textAlign = "left";
+  y += 14;
+
+  c.employees.forEach(e=>{
+    ctx.strokeStyle = "#eee"; ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(width-pad,y); ctx.stroke();
+    y += rowH*0.65;
+    ctx.font = "15px sans-serif"; ctx.fillStyle = "#222";
+    ctx.fillText(e.name, pad, y);
+    ctx.textAlign = "right"; ctx.font="600 15px sans-serif";
+    ctx.fillText(formatMoney(e.amount), width-pad, y);
+    ctx.textAlign = "left";
+    y += rowH*0.35;
+  });
+
+  y += 10;
+  ctx.strokeStyle = "#ccc"; ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(width-pad,y); ctx.stroke();
+
+  canvas.toBlob(blob=>{
+    const d = new Date(c.date);
+    const stamp = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    downloadBlob(blob, `tips-calc-${stamp}.png`);
+    toast("Изображение скачано ✓","success");
+  }, "image/png");
+}
+
 document.getElementById("exportCsvBtn").addEventListener("click", ()=>{
   if(calculations.length===0){ toast("Нет данных для экспорта","error"); return; }
-  const header = ["Дата","Время","Общие чаевые","Заготовки %","Заготовки ₽","К распределению","Сотрудник","Процент","Часы","Доля %","Сумма"];
+  const header = ["Дата","Время","Общие чаевые","Заготовщик %","Заготовщик ₽","К распределению","Сотрудник","Процент","Часы","Доля %","Сумма"];
   const lines = [header.join(";")];
-  calculations.forEach(c=>{
-    const d = new Date(c.date);
-    const dateStr = `${String(d.getDate()).padStart(2,"0")}.${String(d.getMonth()+1).padStart(2,"0")}.${d.getFullYear()}`;
-    const timeStr = `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
-    const dedPct = c.deductionEnabled && c.deductionType==="percent" ? c.deductionValue : "";
-    c.employees.forEach(e=>{
-      lines.push([
-        dateStr, timeStr, c.totalTips, dedPct, c.deductionAmount, c.tipsToDistribute,
-        `"${e.name.replace(/"/g,'""')}"`, e.percentage||0, e.hours||0, (e.share*100).toFixed(2), e.amount
-      ].join(";"));
-    });
-  });
+  calculations.forEach(c=>{ lines.push(...calcToCSVRows(c)); });
   const csv = "\uFEFF" + lines.join("\r\n");
   const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
   const url = URL.createObjectURL(blob);
