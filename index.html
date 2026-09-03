@@ -1771,7 +1771,7 @@ function downloadCalcCSV(c){
 }
 
 function downloadCalcImage(c){
-  const rowH = 54, headH = 210, footH = 30, pad = 28, width = 640;
+  const rowH = 44, headH = 210, footH = 30, pad = 28, width = 640;
   const height = headH + c.employees.length*rowH + footH + pad*2;
   const canvas = document.createElement("canvas");
   const dpr = window.devicePixelRatio || 1;
@@ -1823,22 +1823,22 @@ function downloadCalcImage(c){
 
   c.employees.forEach(e=>{
     ctx.strokeStyle = "#eee"; ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(width-pad,y); ctx.stroke();
-    y += rowH*0.42;
+    y += rowH*0.62;
     ctx.font = "15px sans-serif"; ctx.fillStyle = "#222";
     ctx.fillText(e.name, pad, y);
-    ctx.textAlign = "right"; ctx.font="600 15px sans-serif"; ctx.fillStyle = "#222";
-    ctx.fillText(formatMoney(e.amount), width-pad, y);
-    ctx.textAlign = "left";
 
-    y += 22;
-    ctx.font = "12.5px sans-serif"; ctx.fillStyle = "#999";
     const detailParts = [];
     if(c.mode !== "hours") detailParts.push(`${e.percentage||0}%`);
     if(c.mode !== "percent") detailParts.push(`${e.hours||0} ч`);
-    detailParts.push(`доля ${(e.share*100).toFixed(1)}%`);
-    ctx.fillText(detailParts.join("  ·  "), pad, y);
+    if(detailParts.length){
+      ctx.textAlign = "center"; ctx.font = "13px sans-serif"; ctx.fillStyle = "#888";
+      ctx.fillText(detailParts.join("  ×  "), width*0.62, y);
+    }
 
-    y += rowH*0.36;
+    ctx.textAlign = "right"; ctx.font="600 15px sans-serif"; ctx.fillStyle = "#222";
+    ctx.fillText(formatMoney(e.amount), width-pad, y);
+    ctx.textAlign = "left";
+    y += rowH*0.38;
   });
 
   y += 10;
