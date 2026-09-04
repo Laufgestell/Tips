@@ -1762,8 +1762,29 @@ function downloadBlob(blob, filename){
   URL.revokeObjectURL(url);
 }
 function downloadCalcCSV(c){
-  const header = ["Дата","Время","Общие чаевые","Заготовщик %","Заготовщик ₽","К распределению","Сотрудник","Процент","Часы","Доля %","Сумма"];
-  const csv = "\uFEFF" + [header.join(";"), ...calcToCSVRows(c)].join("\r\n");
+  const lines = [];
+  lines.push("Alaska Bar — расчёт чаевых");
+  lines.push(`Дата;${formatDateHuman(c.date)}`);
+  lines.push("");
+  lines.push(`Общие чаевые;${c.totalTips}`);
+  if(c.deductionEnabled){
+    lines.push(`Заготовщик;${c.deductionAmount}`);
+  }
+  lines.push(`К распределению;${c.tipsToDistribute}`);
+  lines.push("");
+  const cols = ["Сотрудник"];
+  if(c.mode !== "hours") cols.push("Процент");
+  if(c.mode !== "percent") cols.push("Часы");
+  cols.push("Сумма");
+  lines.push(cols.join(";"));
+  c.employees.forEach(e=>{
+    const row = [`"${e.name.replace(/"/g,'""')}"`];
+    if(c.mode !== "hours") row.push(e.percentage||0);
+    if(c.mode !== "percent") row.push(e.hours||0);
+    row.push(e.amount);
+    lines.push(row.join(";"));
+  });
+  const csv = "\uFEFF" + lines.join("\r\n");
   const d = new Date(c.date);
   const stamp = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
   downloadBlob(new Blob([csv], {type:"text/csv;charset=utf-8;"}), `tips-calc-${stamp}.csv`);
