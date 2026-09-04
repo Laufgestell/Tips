@@ -327,6 +327,11 @@ canvas{width:100%;display:block;}
     <!-- ===================== СЧЁТ / РАСЧЁТ ===================== -->
     <section class="screen active" id="screen-calc">
       <div class="card">
+        <div class="card-title">Название расчёта (необязательно)</div>
+        <input class="input" id="calcTitleInput" placeholder="Например: мероприятие 11 августа">
+      </div>
+
+      <div class="card">
         <div class="card-title">Общие чаевые</div>
         <input class="input input-lg" inputmode="numeric" id="totalTipsInput" placeholder="0 ₽" value="">
       </div>
@@ -600,6 +605,7 @@ let editingCalcId = null; // if editing a saved calculation from history
 function freshCalc(){
   return {
     id: null,
+    title: "",
     date: new Date().toISOString(),
     totalTips: 0,
     deductionEnabled: false,
@@ -781,6 +787,7 @@ function round2(n){ return Math.round(n*100)/100; }
    RENDER: CALC SCREEN
 ========================================================================= */
 function renderCalcScreen(){
+  document.getElementById("calcTitleInput").value = calc.title || "";
   const numInputMode = settings.allowKopecks ? "decimal" : "numeric";
   document.getElementById("totalTipsInput").setAttribute("inputmode", numInputMode);
   document.getElementById("totalTipsInput").value = formatInputNumber(calc.totalTips);
@@ -889,6 +896,9 @@ function escapeHtml(s){
 }
 
 /* ---- calc screen event wiring ---- */
+document.getElementById("calcTitleInput").addEventListener("input", (e)=>{
+  calc.title = e.target.value;
+});
 document.getElementById("totalTipsInput").addEventListener("input", (e)=>{
   calc.totalTips = parseNumberInput(e.target.value);
   recalcAll();
@@ -1364,7 +1374,7 @@ function renderHistoryScreen(){
     if(end && histPeriod!=="today" && histPeriod!=="yesterday" && histPeriod!=="month" && histPeriod!=="lastMonth" && new Date(c.date) > end) return false;
     if((histPeriod==="today"||histPeriod==="month") && new Date(c.date) > new Date()) {/*noop*/}
     if(search){
-      return c.employees.some(e=>e.name.toLowerCase().includes(search));
+      return c.employees.some(e=>e.name.toLowerCase().includes(search)) || (c.title||"").toLowerCase().includes(search);
     }
     return true;
   });
@@ -1377,7 +1387,8 @@ function renderHistoryScreen(){
   }
   list.innerHTML = filtered.map(c=>`
     <div class="hist-item" data-open="${c.id}">
-      <div class="hi-top"><span class="hi-date">${formatDateHuman(c.date)}</span><span class="hi-total num">${formatMoney(c.totalTips)}</span></div>
+      <div class="hi-top"><span class="hi-date">${c.title ? escapeHtml(c.title) : formatDateHuman(c.date)}</span><span class="hi-total num">${formatMoney(c.totalTips)}</span></div>
+      ${c.title ? `<div style="font-size:11.5px;color:var(--text-faint);margin:-4px 0 6px;">${formatDateHuman(c.date)}</div>` : ""}
       <div class="hi-meta">
         <span>${c.deductionEnabled ? "Заготовщик: "+formatMoney(c.deductionAmount) : "Без заготовщика"}</span>
         <span>К распределению: ${formatMoney(c.tipsToDistribute)}</span>
@@ -1418,6 +1429,27 @@ function payoutCardsHtml(c){
   return `<div class="section-title">Выплаты</div>${cards}`;
 }
 
+function openRenameCalcModal(c){
+  openModal(`
+    <div class="modal-head"><h3>Название расчёта</h3><button class="modal-close" id="mClose">✕</button></div>
+    <label class="field-label">Например: «Мероприятие 11 августа» или «С 1 по 15 августа»</label>
+    <input class="input" id="renameCalcInput" value="${escapeHtml(c.title||"")}" placeholder="Название (необязательно)">
+    <button class="btn btn-primary btn-block" style="margin-top:14px;" id="renameCalcSave">Сохранить</button>
+  `);
+  document.getElementById("mClose").addEventListener("click", closeModal);
+  document.getElementById("renameCalcInput").focus();
+  document.getElementById("renameCalcSave").addEventListener("click", async ()=>{
+    c.title = document.getElementById("renameCalcInput").value.trim();
+    c.updatedAt = nowISO();
+    await dbPut("calculations", c);
+    if(calc.id === c.id) calc.title = c.title;
+    closeModal();
+    renderHistoryScreen();
+    openHistoryDetail(c.id);
+    toast("Название сохранено ✓","success");
+  });
+}
+
 function openHistoryDetail(id){
   const c = calculations.find(x=>x.id===id);
   if(!c) return;
@@ -1430,7 +1462,14 @@ function openHistoryDetail(id){
   `).join("");
   const modeLabel = c.mode==="percent"?"По процентам":c.mode==="hours"?"По часам":"Процент × часы";
   openModal(`
-    <div class="modal-head"><h3>${formatDateHuman(c.date)}</h3><button class="modal-close" id="mClose">✕</button></div>
+    <div class="modal-head">
+      <h3>${c.title ? escapeHtml(c.title) : formatDateHuman(c.date)}</h3>
+      <button class="modal-close" id="mClose">✕</button>
+    </div>
+    <div class="row" style="margin-top:-10px;margin-bottom:12px;">
+      <span style="font-size:12.5px;color:var(--text-faint);">${formatDateHuman(c.date)}</span>
+      <button class="link-btn" id="renameCalcBtn">✎ ${c.title ? "Переименовать" : "Добавить название"}</button>
+    </div>
     <div class="flow">
       <div class="flow-step"><span class="lbl">Общие чаевые</span><span class="val num">${formatMoney(c.totalTips)}</span></div>
       ${c.deductionEnabled ? `<div class="flow-step"><span class="lbl">Заготовщик</span><span class="val neg num">${formatMoneySigned(-c.deductionAmount)}</span></div>`:""}
@@ -1452,6 +1491,7 @@ function openHistoryDetail(id){
     </div>
   `);
   document.getElementById("mClose").addEventListener("click", closeModal);
+  document.getElementById("renameCalcBtn").addEventListener("click", ()=>openRenameCalcModal(c));
   document.getElementById("downloadCsvBtn").addEventListener("click", ()=>downloadCalcCSV(c));
   document.getElementById("downloadImgBtn").addEventListener("click", ()=>downloadCalcImage(c));
   document.querySelectorAll("[data-copy-payout]").forEach(btn=>{
@@ -1763,25 +1803,32 @@ function downloadBlob(blob, filename){
 }
 function downloadCalcCSV(c){
   const lines = [];
-  lines.push("Alaska Bar — расчёт чаевых");
+  lines.push(c.title ? c.title : "Alaska Bar — расчёт чаевых");
   lines.push(`Дата;${formatDateHuman(c.date)}`);
   lines.push("");
-  lines.push(`Общие чаевые;${c.totalTips}`);
+
+  const totalsHeader = ["Общие чаевые"];
+  const totalsValues = [c.totalTips];
   if(c.deductionEnabled){
-    lines.push(`Заготовщик;${c.deductionAmount}`);
+    totalsHeader.push("Заготовщик %","Заготовщик ₽");
+    totalsValues.push(c.deductionType==="percent" ? c.deductionValue : "", c.deductionAmount);
   }
-  lines.push(`К распределению;${c.tipsToDistribute}`);
+  totalsHeader.push("К распределению");
+  totalsValues.push(c.tipsToDistribute);
+  lines.push(totalsHeader.join(";"));
+  lines.push(totalsValues.join(";"));
   lines.push("");
+
   const cols = ["Сотрудник"];
   if(c.mode !== "hours") cols.push("Процент");
   if(c.mode !== "percent") cols.push("Часы");
-  cols.push("Сумма");
+  cols.push("Доля %","Сумма");
   lines.push(cols.join(";"));
   c.employees.forEach(e=>{
     const row = [`"${e.name.replace(/"/g,'""')}"`];
     if(c.mode !== "hours") row.push(e.percentage||0);
     if(c.mode !== "percent") row.push(e.hours||0);
-    row.push(e.amount);
+    row.push((e.share*100).toFixed(2), e.amount);
     lines.push(row.join(";"));
   });
   const csv = "\uFEFF" + lines.join("\r\n");
@@ -1802,7 +1849,13 @@ function downloadCalcImage(c){
 
   ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,width,height);
   ctx.fillStyle = "#1a1a1a"; ctx.font = "600 20px Georgia, serif";
-  ctx.fillText("Alaska Bar — расчёт чаевых", pad, pad+22);
+  let titleText = c.title ? c.title : "Alaska Bar — расчёт чаевых";
+  const maxTitleWidth = width - pad*2;
+  while(ctx.measureText(titleText).width > maxTitleWidth && titleText.length > 1){
+    titleText = titleText.slice(0, -1);
+  }
+  if(titleText !== (c.title ? c.title : "Alaska Bar — расчёт чаевых")) titleText = titleText.trim() + "…";
+  ctx.fillText(titleText, pad, pad+22);
   ctx.fillStyle = "#888"; ctx.font = "13px sans-serif";
   ctx.fillText(formatDateHuman(c.date), pad, pad+44);
 
